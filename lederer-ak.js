@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
   // 1) Podmínka – běž jen tehdy, pokud je brand Acca Kappa
-  // -> tady je nejjednodušší univerzální varianta – hledá text v kódu stránky
   var isAccaKappa = /Acca\s*Kappa/i.test(document.documentElement.innerHTML);
   if (!isAccaKappa) return;
 
@@ -20,10 +19,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   brandBox.innerHTML = `
     <h3 class="ak-brand-title">O značce Acca Kappa</h3>
+    <img src="/user/documents/upload/acca-kappa/Acca Kappa - cat.jpg" alt="Acca Kappa" class="ak-brand-img">
     <p class="ak-brand-text">
       Acca Kappa je ikonická italská značka s dlouhou tradicí výroby kartáčů a luxusní péče o vlasy.
       Spojuje kvalitní materiály, funkční design a maximální šetrnost k vlasům i pokožce hlavy.
     </p>
+    <a href="/znacka/acca-kappa" class="btn btn-primary ak-brand-btn">Více informací</a>
   `;
 
   // 5) Vlož box hned za .basic-description
