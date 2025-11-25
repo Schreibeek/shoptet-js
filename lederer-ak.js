@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
       Acca Kappa je ikonická italská značka s dlouhou tradicí výroby kartáčů a luxusní péče o vlasy.
       Spojuje kvalitní materiály, funkční design a maximální šetrnost k vlasům i pokožce hlavy.
     </p>
-    <a href="/znacka/acca-kappa" class="btn btn-primary ak-brand-btn">Více informací</a>
+    <a href="/acca-kappa" class="btn btn-primary ak-brand-btn">Více informací</a>
   `;
 
   // 5) Vlož box hned za .basic-description
