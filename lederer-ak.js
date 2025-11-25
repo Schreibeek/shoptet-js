@@ -1,4 +1,3 @@
-<script>
 document.addEventListener('DOMContentLoaded', function () {
   // 1) Podmínka – běž jen tehdy, pokud je brand Acca Kappa
   // -> tady je nejjednodušší univerzální varianta – hledá text v kódu stránky
@@ -30,4 +29,3 @@ document.addEventListener('DOMContentLoaded', function () {
   // 5) Vlož box hned za .basic-description
   basic.parentNode.insertBefore(brandBox, basic.nextSibling);
 });
-</script>
