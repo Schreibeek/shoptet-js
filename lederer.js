@@ -11,7 +11,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var banner = document.createElement('div');
   banner.innerHTML = `
-    <img src="https://www.lukaslederer.cz/user/documents/upload/bannery/Svicka.jpg" alt="Dárek svíčka" style="width:100%; border-radius:10px; margin-bottom:10px;">
+    <a href="https://www.lukaslederer.cz/authentic-beauty-concept/?pv54=649">
+      <img 
+        src="https://www.lukaslederer.cz/user/documents/upload/bannery/Svicka.jpg"
+        alt="Authentic Beauty Concept – dárek"
+        style="width:100%; border-radius:10px; margin-bottom:20px; display:block;">
+    </a>
   `;
 
   infoGrid.parentNode.insertBefore(banner, infoGrid.nextSibling);
