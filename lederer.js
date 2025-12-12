@@ -1,4 +1,3 @@
-<script>
 document.addEventListener('DOMContentLoaded', function () {
   var headline = document.querySelector('.p-info-headline h1');
   var infoGrid = document.querySelector('.p-info-grid');
@@ -22,4 +21,3 @@ document.addEventListener('DOMContentLoaded', function () {
 
   infoGrid.parentNode.insertBefore(banner, infoGrid.nextSibling);
 });
-</script>
