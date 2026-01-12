@@ -22,19 +22,20 @@ document.addEventListener('DOMContentLoaded', function () {
   infoGrid.parentNode.insertBefore(banner, infoGrid.nextSibling);
 });
 
-// Badge „Přírodní složení“ přes hlavní fotku – pouze pro produkty LERDEE
+// Badge „Přírodní složení“ – pouze pro produkty LERDEE (detail + kategorie)
+
 (function(){
   const BADGE_IMG="https://www.lukaslederer.cz/user/documents/upload/odznaky/prirodni-slozeni.png";
   const BRAND_KEYWORD="lerdee";
 
-  function productHasBrand(){
+  /* ===== DETAIL PRODUKTU ===== */
+  function detailHasBrand(){
     const h1=document.querySelector(".p-info-headline h1");
-    if(!h1)return false;
-    return h1.textContent.toLowerCase().includes(BRAND_KEYWORD);
+    return h1 && h1.textContent.toLowerCase().includes(BRAND_KEYWORD);
   }
 
-  function injectBadge(){
-    if(!productHasBrand())return;
+  function injectDetailBadge(){
+    if(!detailHasBrand())return;
 
     const main=document.querySelector(".gallery-new #main-slider");
     if(!main||main.querySelector(".js-product-badge"))return;
@@ -49,11 +50,39 @@ document.addEventListener('DOMContentLoaded', function () {
     main.appendChild(badge);
   }
 
-  if(document.readyState==="loading"){
-    document.addEventListener("DOMContentLoaded",injectBadge);
-  }else{
-    injectBadge();
+  /* ===== KATEGORIE / VÝPIS PRODUKTŮ ===== */
+  function injectCategoryBadges(){
+    document.querySelectorAll(".p").forEach(card=>{
+      if(card.querySelector(".js-product-badge"))return;
+
+      const nameEl=card.querySelector(".p-in-in .name span");
+      if(!nameEl||!nameEl.textContent.toLowerCase().includes(BRAND_KEYWORD))return;
+
+      const imageLink=card.querySelector("a.image");
+      if(!imageLink)return;
+
+      if(getComputedStyle(imageLink).position==="static")imageLink.style.position="relative";
+
+      const badge=document.createElement("img");
+      badge.className="js-product-badge";
+      badge.src=BADGE_IMG;
+      badge.alt="Přírodní složení";
+
+      imageLink.appendChild(badge);
+    });
   }
 
-  new MutationObserver(injectBadge).observe(document.documentElement,{childList:true,subtree:true});
+  /* ===== INIT ===== */
+  function init(){
+    injectDetailBadge();
+    injectCategoryBadges();
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",init);
+  }else{
+    init();
+  }
+
+  new MutationObserver(init).observe(document.documentElement,{childList:true,subtree:true});
 })();
