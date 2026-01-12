@@ -22,22 +22,23 @@ document.addEventListener('DOMContentLoaded', function () {
   infoGrid.parentNode.insertBefore(banner, infoGrid.nextSibling);
 });
 
-// Badge „Přírodní složení“ – pouze pro produkty LERDEE (detail + kategorie)
+// Badge „Přírodní složení“ – pouze pro produkty LERDEE (detail + kategorie výpis #products)
+
 (function(){
-  const BADGE_IMG="https://www.lukaslederer.cz/user/documents/upload/odznaky/prirodni-slozeni3.png";
+  const BADGE_IMG="https://www.lukaslederer.cz/user/documents/upload/odznaky/prirodni-slozeni.png";
   const BRAND_KEYWORD="lerdee";
 
   /* ===== DETAIL PRODUKTU ===== */
   function detailHasBrand(){
     const h1=document.querySelector(".p-info-headline h1");
-    return !!(h1 && h1.textContent.toLowerCase().includes(BRAND_KEYWORD));
+    return h1 && h1.textContent.toLowerCase().includes(BRAND_KEYWORD);
   }
 
   function injectDetailBadge(){
     if(!detailHasBrand())return;
 
     const main=document.querySelector(".gallery-new #main-slider");
-    if(!main||main.querySelector(".js-product-badge"))return;
+    if(!main||main.querySelector(".js-product-badge--detail"))return;
 
     if(getComputedStyle(main).position==="static")main.style.position="relative";
 
@@ -45,15 +46,16 @@ document.addEventListener('DOMContentLoaded', function () {
     badge.className="js-product-badge js-product-badge--detail";
     badge.src=BADGE_IMG;
     badge.alt="Přírodní složení";
-    badge.loading="lazy";
-    badge.decoding="async";
 
     main.appendChild(badge);
   }
 
-  /* ===== KATEGORIE / VÝPIS PRODUKTŮ ===== */
+  /* ===== KATEGORIE / VÝPIS PRODUKTŮ (jen uvnitř #products) ===== */
   function injectCategoryBadges(){
-    document.querySelectorAll(".p").forEach(card=>{
+    const list=document.querySelector("#products");
+    if(!list)return;
+
+    list.querySelectorAll(".p").forEach(card=>{
       if(card.querySelector(".js-product-badge--cat"))return;
 
       const nameEl=card.querySelector(".p-in-in .name span");
@@ -62,12 +64,12 @@ document.addEventListener('DOMContentLoaded', function () {
       const imageLink=card.querySelector("a.image");
       if(!imageLink)return;
 
+      if(getComputedStyle(imageLink).position==="static")imageLink.style.position="relative";
+
       const badge=document.createElement("img");
       badge.className="js-product-badge js-product-badge--cat";
       badge.src=BADGE_IMG;
       badge.alt="Přírodní složení";
-      badge.loading="lazy";
-      badge.decoding="async";
 
       imageLink.appendChild(badge);
     });
