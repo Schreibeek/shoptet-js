@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // Badge „Přírodní složení“ – pouze pro produkty LERDEE (detail + kategorie výpis #products)
 
 (function(){
-  const BADGE_IMG="https://www.lukaslederer.cz/user/documents/upload/odznaky/prirodni-slozeni5.png";
+  const BADGE_IMG="https://www.lukaslederer.cz/user/documents/upload/odznaky/prirodni-slozeni5-pad.png";
   const BRAND_KEYWORD="lerdee";
 
   /* ===== DETAIL PRODUKTU ===== */
