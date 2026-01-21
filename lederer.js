@@ -22,6 +22,27 @@ document.addEventListener('DOMContentLoaded', function () {
   infoGrid.parentNode.insertBefore(banner, infoGrid.nextSibling);
 });
 
+// Banner u produktů se štítkem
+
+document.addEventListener('DOMContentLoaded', function () {
+  var infoGrid = document.querySelector('.p-info-grid');
+  var extraGiftFlag = document.querySelector('.flag-darek-extra');
+
+  if (!infoGrid || !extraGiftFlag) return;
+
+  var banner = document.createElement('div');
+  banner.innerHTML = `
+    <a href="https://www.lukaslederer.cz/authentic-beauty-concept/darkovy-box-authentic-beauty-concept/">
+      <img 
+        src="https://www.lukaslederer.cz/user/documents/upload/bannery/3a1.jpg"
+        alt="Authentic Beauty Concept – dárek navíc"
+        style="width:100%; border-radius:10px; margin-bottom:20px; display:block;">
+    </a>
+  `;
+
+  infoGrid.parentNode.insertBefore(banner, infoGrid.nextSibling);
+});
+
 // Badge „Přírodní složení“ – pouze pro produkty LERDEE (detail + kategorie výpis #products)
 
 (function(){
