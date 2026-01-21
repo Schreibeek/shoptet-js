@@ -26,9 +26,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 document.addEventListener('DOMContentLoaded', function () {
   var infoGrid = document.querySelector('.p-info-grid');
-  var extraGiftFlag = document.querySelector('.flag-darek-extra');
+  var flagContainer = document.querySelector('#main-slider .flags');
 
-  if (!infoGrid || !extraGiftFlag) return;
+  if (!infoGrid || !flagContainer) return;
+
+  var hasExtraGiftFlag = flagContainer.querySelector('.flag-darek-extra');
+
+  if (!hasExtraGiftFlag) return;
 
   var banner = document.createElement('div');
   banner.innerHTML = `
