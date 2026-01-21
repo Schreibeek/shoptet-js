@@ -115,3 +115,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   new MutationObserver(init).observe(document.documentElement,{childList:true,subtree:true});
 })();
+
+// Filtry open
+if (window.matchMedia('(min-width:1024px)').matches) {
+  window.addEventListener('load', function() {
+    const btn = document.querySelector('a.unveil-button[data-unveil="filters"]');
+    if (btn) btn.click(); // simuluj kliknutie
+  });
+}
