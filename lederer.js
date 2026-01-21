@@ -1,3 +1,13 @@
+// Filtry Open
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.filter-section').forEach(function(section){
+    section.classList.add('open');
+  });
+});
+
+// Banner svíčka zdarma
+
 document.addEventListener('DOMContentLoaded', function () {
   var headline = document.querySelector('.p-info-headline h1');
   var infoGrid = document.querySelector('.p-info-grid');
