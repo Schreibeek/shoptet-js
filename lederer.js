@@ -1,10 +1,26 @@
 // Filtry Open
 
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.filter-section').forEach(function(section){
-    section.classList.add('open');
-  });
-});
+(function () {
+  if (window.matchMedia('(max-width: 1023px)').matches) return;
+
+  function openFiltersOnce() {
+    const btn = document.querySelector(
+      '.filters-unveil-button-wrapper .unveil-button[data-unveil="filters"]'
+    );
+
+    const filters = document.querySelector('#filters');
+
+    if (!btn || !filters) return;
+
+    // už otevřeno → konec
+    if (filters.classList.contains('visible')) return;
+
+    btn.click();
+  }
+
+  document.addEventListener('DOMContentLoaded', openFiltersOnce);
+  window.addEventListener('load', openFiltersOnce);
+})();
 
 // Banner svíčka zdarma
 
