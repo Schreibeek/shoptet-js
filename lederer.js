@@ -118,8 +118,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Filtry open
 if (window.matchMedia('(min-width:1024px)').matches) {
-  window.addEventListener('load', function() {
-    const btn = document.querySelector('a.unveil-button[data-unveil="filters"]');
-    if (btn) btn.click(); // simuluj kliknutie
+  window.addEventListener('load', () => {
+    const filters = document.getElementById('filters');
+    const btnFilters = document.querySelector('a.unveil-button[data-unveil="filters"]');
+    if (filters && btnFilters && !filters.classList.contains('visible')) btnFilters.click();
+
+    const more = document.getElementById('category-filter-hover');
+    const btnMore = document.querySelector('a.toggle-filters[data-unveil="category-filter-hover"]');
+    if (more && btnMore && !more.classList.contains('visible')) btnMore.click();
   });
 }
