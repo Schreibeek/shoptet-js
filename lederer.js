@@ -38,9 +38,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var banner = document.createElement('div');
   banner.innerHTML = `
-    <a href="https://www.lukaslederer.cz/authentic-beauty-concept/darkovy-box-authentic-beauty-concept/">
+    <a href="https://www.lukaslederer.cz/majovy-ulovek-od-authentic-beauty-concept/">
       <img 
-        src="https://www.lukaslederer.cz/user/documents/upload/bannery/3a1.jpg"
+        src="https://www.lukaslederer.cz/user/documents/upload/bannery/AkceABC.jpg"
         alt="Authentic Beauty Concept – dárek navíc"
         style="width:100%; border-radius:10px; margin-bottom:20px; display:block;">
     </a>
