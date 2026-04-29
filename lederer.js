@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
   banner.innerHTML = `
     <a href="https://www.lukaslederer.cz/majovy-ulovek-od-authentic-beauty-concept/">
       <img 
-        src="https://www.lukaslederer.cz/user/documents/upload/bannery/AkceABC.jpg"
+        src="https://www.lukaslederer.cz/user/documents/upload/bannery/AkceABC2.jpg"
         alt="Authentic Beauty Concept – dárek navíc"
         style="width:100%; border-radius:10px; margin-bottom:20px; display:block;">
     </a>
