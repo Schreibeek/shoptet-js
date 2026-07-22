@@ -151,17 +151,21 @@ document.addEventListener("DOMContentLoaded", function() {
         { selector: ".flag-black10", className: "custom-discount-black" },
         { selector: ".flag-black20", className: "custom-discount-black" }
     ];
-    var productImageSection = document.querySelector(".p-image");
-    if (!productImageSection) return;
+    // FIX 2026-07-22: flag nemusí být uvnitř .p-image — u produktů s gallery-new/splide
+    // ho Shoptet vykresluje v .p-image-wrapper (flags-inline). Hledáme proto v celém
+    // dokumentu a vylučujeme jen flagy z produktových karet (související produkty, výpisy).
     var couponElement = null;
     var classToApply = "custom-discount-info";
     for (var i = 0; i < possibleFlags.length; i++) {
-        var el = productImageSection.querySelector(possibleFlags[i].selector);
-        if (el) {
-            couponElement = el;
-            classToApply = possibleFlags[i].className;
-            break;
+        var els = document.querySelectorAll(possibleFlags[i].selector);
+        for (var j = 0; j < els.length; j++) {
+            if (!els[j].closest(".product") && !els[j].closest("#products")) {
+                couponElement = els[j];
+                classToApply = possibleFlags[i].className;
+                break;
+            }
         }
+        if (couponElement) break;
     }
     if (couponElement) {
         var couponText = couponElement.textContent.trim();
