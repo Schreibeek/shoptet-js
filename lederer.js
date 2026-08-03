@@ -206,7 +206,7 @@ document.addEventListener("DOMContentLoaded", function() {
     doprava.style.marginTop = "-5px";
     doprava.style.marginBottom = "5px";
     doprava.style.color = "#dfb072";
-    doprava.textContent = price > 1998 ? "Doprava ZDARMA!" : "Doprava jen za 49 Kč!";
+    doprava.textContent = price > 498 ? "Doprava ZDARMA!" : "Doprava jen za 49 Kč!";
     box.insertAdjacentElement("afterend", doprava);
   }
 });
