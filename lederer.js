@@ -162,9 +162,9 @@ document.addEventListener("DOMContentLoaded", function() {
         label: "Cena s kódem:",
         // kliknutím na štítek uplatnit kupón (Shoptet AJAX /action/Cart/addDiscountCoupon/)
         clickToApply: true,
-        // Shoptet kupón k prázdnému košíku nepřijme. "addToCart" = vložit tenhle
-        // produkt a hned uplatnit kód; "copy" = jen zkopírovat kód do schránky.
-        emptyCartAction: "addToCart"
+        // Shoptet kupón k prázdnému košíku nepřijme. "copy" = jen zkopírovat kód do
+        // schránky; "addToCart" = vložit tenhle produkt a hned uplatnit kód.
+        emptyCartAction: "copy"
     };
 
     var possibleFlags = [
