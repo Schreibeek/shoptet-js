@@ -161,9 +161,7 @@ document.addEventListener("DOMContentLoaded", function() {
         showOriginal: true,
         label: "Cena s kódem:",
         // kliknutím na štítek uplatnit kupón (Shoptet AJAX /action/Cart/addDiscountCoupon/)
-        clickToApply: true,
-        hintText: "Uplatnit kód",
-        appliedText: "✓ Kód aktivní"
+        clickToApply: true
     };
 
     var possibleFlags = [
@@ -218,7 +216,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // POZOR: deklarace musi byt nad volanim init funkci — `var x = ...` se vykonava
     // az na svem radku a prepsalo by referenci nastavenou uvnitr enableApply().
-    var hint = null;
     var busy = false;
     var pending = null;
 
@@ -346,8 +343,6 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!window.shoptet || !shoptet.config || !shoptet.config.addDiscountCouponUrl) return;
         if (!shoptet.cart || typeof shoptet.cart.ajaxSubmitForm !== "function") return;
 
-        hint = span("cdi-hint", CONFIG.hintText);
-        banner.appendChild(hint);
         banner.classList.add("coupon-banner--clickable");
         banner.setAttribute("role", "button");
         banner.setAttribute("tabindex", "0");
@@ -423,11 +418,9 @@ document.addEventListener("DOMContentLoaded", function() {
         return false;
     }
 
+    // Zadny vlastni prvek uvnitr stitku — jen trida, kdyby se chtel stav nastylovat.
     function refreshApplied() {
-        if (!hint) return;
-        var applied = isApplied();
-        banner.classList.toggle("is-applied", applied);
-        hint.textContent = applied ? CONFIG.appliedText : CONFIG.hintText;
+        banner.classList.toggle("is-applied", isApplied());
     }
 
     function copyCode() {
@@ -471,11 +464,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 window.showMessage(text, type || "success");
                 return;
             } catch (e) {}
-        }
-        if (hint) {
-            var original = hint.textContent;
-            hint.textContent = text;
-            setTimeout(function() { hint.textContent = original; }, 4000);
         }
     }
 
