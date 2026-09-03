@@ -145,15 +145,31 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // Kupónová akce z flagu (flag-kupon-sleva, flag-black10/20)
+// FIX 2026-07-22: flag nemusí být uvnitř .p-image — u produktů s gallery-new/splide
+// ho Shoptet vykresluje v .p-image-wrapper (flags-inline). Hledáme proto v celém
+// dokumentu a vylučujeme jen flagy z produktových karet (související produkty, výpisy).
+// NOVÉ 2026-09-03: štítek propisuje i reálnou cenu po uplatnění kupónu. Cena se bere
+// z aktuálně zobrazené ceny na detailu (tj. včetně věrnostní slevy i zvolené varianty)
+// a přepočítá se při každé změně varianty / příplatku.
 document.addEventListener("DOMContentLoaded", function() {
+
+    var CONFIG = {
+        // 'auto'  = zaokrouhlit na počet desetinných míst e-shopu (CZK → 681,59 Kč)
+        // 'round' | 'ceil' | 'floor' = zaokrouhlit na celé koruny
+        rounding: "auto",
+        // vypsat i přeškrtnutou původní cenu
+        showOriginal: true,
+        label: "Cena s kódem:"
+    };
+
     var possibleFlags = [
         { selector: ".flag-kupon-sleva", className: "custom-discount-info" },
         { selector: ".flag-black10", className: "custom-discount-black" },
         { selector: ".flag-black20", className: "custom-discount-black" }
     ];
-    // FIX 2026-07-22: flag nemusí být uvnitř .p-image — u produktů s gallery-new/splide
-    // ho Shoptet vykresluje v .p-image-wrapper (flags-inline). Hledáme proto v celém
-    // dokumentu a vylučujeme jen flagy z produktových karet (související produkty, výpisy).
+
+    if (document.querySelector(".coupon-banner")) return;
+
     var couponElement = null;
     var classToApply = "custom-discount-info";
     for (var i = 0; i < possibleFlags.length; i++) {
@@ -167,20 +183,242 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         if (couponElement) break;
     }
-    if (couponElement) {
-        var couponText = couponElement.textContent.trim();
-        var parts = couponText.match(/-?(\d+)%\s+s kódem\s+(\S+)/i);
-        if (parts && parts.length === 3) {
-            var discount = parts[1];
-            var code = parts[2];
-            var newDiv = document.createElement("div");
-            newDiv.innerHTML = '<strong>🔥 AKCE:</strong> -' + discount + '% s kódem <strong>' + code + '</strong>';
-            newDiv.classList.add(classToApply);
-            var infoGrid = document.querySelector(".p-info-grid");
-            if (infoGrid) {
-                infoGrid.parentNode.insertBefore(newDiv, infoGrid.nextSibling);
+    if (!couponElement) return;
+
+    var parts = couponElement.textContent.trim().match(/-?(\d+)%\s+s kódem\s+(\S+)/i);
+    if (!parts || parts.length !== 3) return;
+
+    var discount = parseFloat(parts[1]);
+    var code = parts[2];
+
+    var anchor = document.querySelector(".p-info-grid") || document.querySelector(".p-final-price-wrapper");
+    if (!anchor) return;
+
+    // --- sestavení štítku (stejné místo i text jako dosud, jen s cenovou částí navíc)
+    var banner = document.createElement("div");
+    banner.className = classToApply + " coupon-banner";
+
+    var main = document.createElement("span");
+    main.className = "cdi-main";
+    main.appendChild(strong("🔥 AKCE:"));
+    main.appendChild(document.createTextNode(" -" + parts[1] + "% s kódem "));
+    main.appendChild(strong(code));
+    banner.appendChild(main);
+
+    var priceWrap = document.createElement("span");
+    priceWrap.className = "cdi-price";
+    priceWrap.style.display = "none";
+    banner.appendChild(priceWrap);
+
+    anchor.parentNode.insertBefore(banner, anchor.nextSibling);
+
+    updatePrice();
+    watchPrice();
+
+    // --- cena po kupónu ------------------------------------------------------
+
+    function updatePrice() {
+        var sep = separators();
+        var el = visiblePriceElement();
+        var raw = el ? readPriceText(el).trim() : "";
+        var numbers = extractNumbers(raw, sep);
+
+        // jedna jednoznačná cena = můžeme počítat; rozsah („od–do“) nebo nepřečtená
+        // cena = necháme štítek v původní podobě, ať nikdy nesvítí nesmysl
+        if (numbers.length !== 1 || !(numbers[0] > 0) || !(discount > 0) || discount >= 100) {
+            priceWrap.style.display = "none";
+            priceWrap.textContent = "";
+            return;
+        }
+
+        var base = numbers[0];
+        var discounted = round(base * (1 - discount / 100), sep);
+        if (!(discounted > 0) || discounted >= base) {
+            priceWrap.style.display = "none";
+            priceWrap.textContent = "";
+            return;
+        }
+
+        var prefix = /^\s*od\b/i.test(raw) ? "od " : "";
+
+        priceWrap.textContent = "";
+        priceWrap.appendChild(span("cdi-price-label", CONFIG.label));
+        if (CONFIG.showOriginal) {
+            var old = document.createElement("s");
+            old.className = "cdi-price-old";
+            old.textContent = prefix + format(base, sep);
+            priceWrap.appendChild(old);
+        }
+        priceWrap.appendChild(strong(prefix + format(discounted, sep), "cdi-price-new"));
+        priceWrap.style.display = "";
+    }
+
+    // Cenu hlídáme na cenovém bloku (štítek leží mimo něj, takže nehrozí smyčka)
+    // + na Shoptet událostech kolem variant a příplatků.
+    function watchPrice() {
+        var scope = document.querySelector(".p-final-price-wrapper")
+            || document.querySelector(".p-info-grid")
+            || document.querySelector("#product-detail-form");
+        if (scope && window.MutationObserver) {
+            new MutationObserver(schedule).observe(scope, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+                attributes: true,
+                attributeFilter: ["class", "style"]
+            });
+        }
+        [
+            "ShoptetSimpleVariantChange",
+            "ShoptetSplitVariantParameterChange",
+            "ShoptetSelectedParametersReset",
+            "ShoptetVariantAvailable",
+            "ShoptetVariantUnavailable",
+            "ShoptetSurchargesPriceUpdated"
+        ].forEach(function(evt) {
+            document.addEventListener(evt, schedule);
+        });
+        window.addEventListener("load", schedule);
+    }
+
+    var pending = null;
+    function schedule() {
+        clearTimeout(pending);
+        pending = setTimeout(updatePrice, 50);
+    }
+
+    // Text ceny nečteme přes innerText — Shoptet drží stránku v blank-mode
+    // (visibility:hidden), kde innerText vrací prázdno. Procházíme proto uzly ručně
+    // a přeskakujeme jen skutečně skryté varianty (no-display / noDisplay / display:none).
+    function readPriceText(el) {
+        var out = "";
+        var nodes = el.childNodes;
+        for (var i = 0; i < nodes.length; i++) {
+            var n = nodes[i];
+            if (n.nodeType === 3) { out += n.nodeValue; continue; }
+            if (n.nodeType !== 1) continue;
+            if (n.classList && (n.classList.contains("no-display") || n.classList.contains("noDisplay"))) continue;
+            if (window.getComputedStyle && getComputedStyle(n).display === "none") continue;
+            out += readPriceText(n);
+        }
+        return out;
+    }
+
+    function visiblePriceElement() {
+        // POZOR: cena NENÍ uvnitř .p-detail-info (tam jsou jen flagy, hodnocení a h1) —
+        // leží v sourozeneckém sloupci .p-info-wrapper uvnitř #product-detail-form.
+        var scope = document.querySelector("#product-detail-form")
+            || document.querySelector(".p-detail-inner")
+            || document.querySelector(".p-info-wrapper")
+            || document;
+        var selectors = [
+            ".p-final-price-wrapper .price-final-holder",
+            ".p-final-price-wrapper .price-final",
+            ".price-final-holder"
+        ];
+        for (var s = 0; s < selectors.length; s++) {
+            var nodes = scope.querySelectorAll(selectors[s]);
+            for (var n = 0; n < nodes.length; n++) {
+                var el = nodes[n];
+                if (el.offsetWidth || el.offsetHeight || el.getClientRects().length) return el;
             }
         }
+        return null;
+    }
+
+    // --- pomocné ------------------------------------------------------------
+
+    function separators() {
+        var cfg = (window.shoptet && shoptet.config) || {};
+        var dec = cfg.decSeparator;
+        var thou = cfg.thousandSeparator;
+        var places = cfg.decPlaces;
+        try {
+            var ci = getShoptetDataLayer("currencyInfo");
+            if (ci) {
+                if (dec === undefined) dec = ci.decimalSeparator;
+                if (thou === undefined) thou = ci.thousandSeparator;
+                if (places === undefined) places = ci.priceDecimalPlaces;
+            }
+        } catch (e) {}
+        places = parseInt(places, 10);
+        return {
+            dec: dec || ",",
+            thou: thou === undefined ? " " : thou,
+            places: isNaN(places) ? 2 : Math.abs(places)
+        };
+    }
+
+    // "1 234,50 Kč" → [1234.5] ; "749 Kč – 899 Kč" → [749, 899] (rozsah = neukazujeme)
+    function extractNumbers(text, sep) {
+        var s = String(text).replace(/[\u00a0\u202f\u2009]/g, " ");
+        s = s.replace(/(\d)[ ](?=\d)/g, "$1");
+        if (sep.thou && sep.thou.trim()) {
+            s = s.replace(new RegExp("(\\d)" + escapeRe(sep.thou) + "(?=\\d)", "g"), "$1");
+        }
+        var out = [];
+        var re = /\d+(?:[.,]\d+)?/g;
+        var m;
+        while ((m = re.exec(s)) !== null) {
+            var value = parseFloat(m[0].replace(",", "."));
+            if (!isNaN(value)) out.push(value);
+        }
+        return out;
+    }
+
+    function round(value, sep) {
+        switch (CONFIG.rounding) {
+            case "ceil": return Math.ceil(value);
+            case "floor": return Math.floor(value);
+            case "round": return Math.round(value);
+            default:
+                var f = Math.pow(10, sep.places);
+                return Math.round(value * f) / f;
+        }
+    }
+
+    // Primárně Shoptetí formátovač — drží se nastavení měny e-shopu
+    // (celé číslo bez desetinných míst, jinak 749,50 Kč).
+    function format(value, sep) {
+        try {
+            if (typeof Number.prototype.ShoptetFormatAsCurrency === "function") {
+                return value.ShoptetFormatAsCurrency();
+            }
+        } catch (e) {}
+        var cfg = (window.shoptet && shoptet.config) || {};
+        var symbol = cfg.currencySymbol;
+        if (symbol === undefined) {
+            try { symbol = getShoptetDataLayer("currencyInfo").symbol; } catch (e) { symbol = "Kč"; }
+        }
+        var left = false;
+        try {
+            left = cfg.currencySymbolLeft !== undefined
+                ? Boolean(parseInt(cfg.currencySymbolLeft, 10))
+                : Boolean(parseInt(getShoptetDataLayer("currencyInfo").symbolLeft, 10));
+        } catch (e) {}
+        var places = value % 1 === 0 ? 0 : sep.places;
+        var chunks = Math.abs(value).toFixed(places).split(".");
+        chunks[0] = chunks[0].replace(/\B(?=(\d{3})+(?!\d))/g, sep.thou);
+        var number = (value < 0 ? "-" : "") + chunks.join(sep.dec);
+        return (left ? symbol + number : number + " " + symbol).trim();
+    }
+
+    function strong(text, className) {
+        var el = document.createElement("strong");
+        if (className) el.className = className;
+        el.textContent = text;
+        return el;
+    }
+
+    function span(className, text) {
+        var el = document.createElement("span");
+        el.className = className;
+        el.textContent = text;
+        return el;
+    }
+
+    function escapeRe(s) {
+        return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 });
 
