@@ -159,7 +159,11 @@ document.addEventListener("DOMContentLoaded", function() {
         rounding: "auto",
         // vypsat i přeškrtnutou původní cenu
         showOriginal: true,
-        label: "Cena s kódem:"
+        label: "Cena s kódem:",
+        // kliknutím na štítek uplatnit kupón (Shoptet AJAX /action/Cart/addDiscountCoupon/)
+        clickToApply: true,
+        hintText: "Uplatnit kód",
+        appliedText: "✓ Kód aktivní"
     };
 
     var possibleFlags = [
@@ -212,8 +216,15 @@ document.addEventListener("DOMContentLoaded", function() {
 
     anchor.parentNode.insertBefore(banner, anchor.nextSibling);
 
+    // POZOR: deklarace musi byt nad volanim init funkci — `var x = ...` se vykonava
+    // az na svem radku a prepsalo by referenci nastavenou uvnitr enableApply().
+    var hint = null;
+    var busy = false;
+    var pending = null;
+
     updatePrice();
     watchPrice();
+    if (CONFIG.clickToApply) enableApply();
 
     // --- cena po kupónu ------------------------------------------------------
 
@@ -281,7 +292,6 @@ document.addEventListener("DOMContentLoaded", function() {
         window.addEventListener("load", schedule);
     }
 
-    var pending = null;
     function schedule() {
         clearTimeout(pending);
         pending = setTimeout(updatePrice, 50);
@@ -324,6 +334,157 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
         return null;
+    }
+
+    // --- uplatnění kupónu kliknutím -----------------------------------------
+    // Shoptet ma na to vlastni endpoint i vlastni hlasku: pri neprazdnem kosiku
+    // vrati "Slevovy kupon byl uspesne pridan.", pri prazdnem kosiku odmitne
+    // ("neni pouzitelny pro zadnou polozku v kosiku"). Prazdny kosik proto resime
+    // sami — zkopirujeme kod do schranky, at zakaznik nedostane cervenou chybu.
+
+    function enableApply() {
+        if (!window.shoptet || !shoptet.config || !shoptet.config.addDiscountCouponUrl) return;
+        if (!shoptet.cart || typeof shoptet.cart.ajaxSubmitForm !== "function") return;
+
+        hint = span("cdi-hint", CONFIG.hintText);
+        banner.appendChild(hint);
+        banner.classList.add("coupon-banner--clickable");
+        banner.setAttribute("role", "button");
+        banner.setAttribute("tabindex", "0");
+        banner.setAttribute("title", "Uplatnit slevový kód " + code);
+
+        banner.addEventListener("click", activate);
+        banner.addEventListener("keydown", function(e) {
+            if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+                e.preventDefault();
+                activate(e);
+            }
+        });
+        document.addEventListener("ShoptetCartUpdated", refreshApplied);
+        document.addEventListener("ShoptetCartAddDiscountCoupon", refreshApplied);
+        refreshApplied();
+    }
+
+    function activate(e) {
+        if (e) e.preventDefault();
+        if (busy || isApplied()) return;
+        if (cartIsEmpty()) { copyCode(); return; }
+        busy = true;
+        setTimeout(function() { busy = false; }, 1500);
+        applyCoupon();
+    }
+
+    function applyCoupon() {
+        var url = shoptet.config.addDiscountCouponUrl;
+        var form = document.createElement("form");
+        form.setAttribute("method", "post");
+        form.setAttribute("action", url);
+        form.className = "csrf-enabled";
+        form.style.display = "none";
+        form.appendChild(hiddenInput("discountCouponCode", code));
+        if (shoptet.csrf && shoptet.csrf.token) {
+            form.appendChild(hiddenInput("__csrf__", shoptet.csrf.token));
+        }
+        document.body.appendChild(form);
+        try {
+            shoptet.cart.ajaxSubmitForm(url, form, "functionsForCart", "cart", true);
+        } catch (err) {
+            copyCode();
+        }
+        setTimeout(function() {
+            if (form.parentNode) form.parentNode.removeChild(form);
+        }, 5000);
+    }
+
+    // Kosik hlida hlavicka — updateCartButton() do #header .cart-count doplnuje <i>
+    // s poctem polozek a tridu full. DataLayer je zaloha.
+    function cartIsEmpty() {
+        var btn = document.querySelector("#header .cart-count");
+        if (btn) {
+            var counter = btn.querySelector("i");
+            if (counter && parseFloat(counter.textContent) > 0) return false;
+            return !btn.classList.contains("full");
+        }
+        try {
+            var cart = getShoptetDataLayer("cart");
+            if (Array.isArray(cart)) return cart.length === 0;
+        } catch (e) {}
+        return true;
+    }
+
+    function isApplied() {
+        try {
+            var info = getShoptetDataLayer("cartInfo");
+            var coupon = info && info.discountCoupon;
+            if (coupon && !Array.isArray(coupon) && coupon.code) {
+                return String(coupon.code).toUpperCase() === code.toUpperCase();
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    function refreshApplied() {
+        if (!hint) return;
+        var applied = isApplied();
+        banner.classList.toggle("is-applied", applied);
+        hint.textContent = applied ? CONFIG.appliedText : CONFIG.hintText;
+    }
+
+    function copyCode() {
+        var report = function(ok) {
+            notify(ok
+                ? "Kód " + code + " je zkopírovaný. Vlož ho v košíku do pole „Slevový kupón\"."
+                : "Slevový kód " + code + " zadej v košíku do pole „Slevový kupón\".",
+                ok ? "success" : "info");
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+            navigator.clipboard.writeText(code).then(
+                function() { report(true); },
+                function() { report(legacyCopy()); }
+            );
+        } else {
+            report(legacyCopy());
+        }
+    }
+
+    function legacyCopy() {
+        try {
+            var ta = document.createElement("textarea");
+            ta.value = code;
+            ta.setAttribute("readonly", "");
+            ta.style.position = "fixed";
+            ta.style.top = "-1000px";
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = document.execCommand("copy");
+            document.body.removeChild(ta);
+            return ok;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Shoptetuv vlastni notifikacni system, at hlaska vypada jako od e-shopu
+    function notify(text, type) {
+        if (typeof window.showMessage === "function") {
+            try {
+                window.showMessage(text, type || "success");
+                return;
+            } catch (e) {}
+        }
+        if (hint) {
+            var original = hint.textContent;
+            hint.textContent = text;
+            setTimeout(function() { hint.textContent = original; }, 4000);
+        }
+    }
+
+    function hiddenInput(name, value) {
+        var el = document.createElement("input");
+        el.type = "hidden";
+        el.name = name;
+        el.value = value;
+        return el;
     }
 
     // --- pomocné ------------------------------------------------------------
