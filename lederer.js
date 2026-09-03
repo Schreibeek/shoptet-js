@@ -161,7 +161,10 @@ document.addEventListener("DOMContentLoaded", function() {
         showOriginal: true,
         label: "Cena s kódem:",
         // kliknutím na štítek uplatnit kupón (Shoptet AJAX /action/Cart/addDiscountCoupon/)
-        clickToApply: true
+        clickToApply: true,
+        // Shoptet kupón k prázdnému košíku nepřijme. "addToCart" = vložit tenhle
+        // produkt a hned uplatnit kód; "copy" = jen zkopírovat kód do schránky.
+        emptyCartAction: "addToCart"
     };
 
     var possibleFlags = [
@@ -363,10 +366,45 @@ document.addEventListener("DOMContentLoaded", function() {
     function activate(e) {
         if (e) e.preventDefault();
         if (busy || isApplied()) return;
-        if (cartIsEmpty()) { copyCode(); return; }
         busy = true;
-        setTimeout(function() { busy = false; }, 1500);
+        setTimeout(function() { busy = false; }, 3000);
+        if (cartIsEmpty()) {
+            if (CONFIG.emptyCartAction === "copy") { busy = false; copyCode(); return; }
+            addToCartThenApply();
+            return;
+        }
         applyCoupon();
+    }
+
+    // Kupón se váže na položky košíku, ne na session — s prázdným košíkem ho Shoptet
+    // odmítne ("není použitelný pro žádnou položku v košíku"). Vložíme proto nejdřív
+    // tenhle produkt (přes skutečný formulář, takže platí zvolená varianta i množství)
+    // a kód uplatníme až na úspěšné vložení.
+    function addToCartThenApply() {
+        var form = document.getElementById("product-detail-form");
+        if (!form || !shoptet.config.addToCartUrl) { busy = false; copyCode(); return; }
+
+        var fallback = null;
+        var onAdded = function() {
+            document.removeEventListener("ShoptetCartAddCartItem", onAdded);
+            clearTimeout(fallback);
+            setTimeout(applyCoupon, 300);
+        };
+        // varianta nezvolená / vyprodáno → Shoptet vypíše svou chybu a událost nepřijde
+        fallback = setTimeout(function() {
+            document.removeEventListener("ShoptetCartAddCartItem", onAdded);
+            busy = false;
+        }, 8000);
+
+        document.addEventListener("ShoptetCartAddCartItem", onAdded);
+        try {
+            shoptet.cart.ajaxSubmitForm(shoptet.config.addToCartUrl, form, "functionsForCart", "cart", true);
+        } catch (err) {
+            clearTimeout(fallback);
+            document.removeEventListener("ShoptetCartAddCartItem", onAdded);
+            busy = false;
+            copyCode();
+        }
     }
 
     function applyCoupon() {
