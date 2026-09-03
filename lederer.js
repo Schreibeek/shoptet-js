@@ -144,6 +144,148 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 
+// ===== Sdílená logika kupónových cen (detail produktu + výpis) ==============
+// Cena se vždycky bere z právě zobrazené ceny, ne z data layeru — tím sedí
+// i u přihlášeného zákazníka s věrnostní slevou a u zvolené varianty.
+var LedererCoupon = (function() {
+
+    function separators() {
+        var cfg = (window.shoptet && shoptet.config) || {};
+        var dec = cfg.decSeparator;
+        var thou = cfg.thousandSeparator;
+        var places = cfg.decPlaces;
+        try {
+            var ci = getShoptetDataLayer("currencyInfo");
+            if (ci) {
+                if (dec === undefined) dec = ci.decimalSeparator;
+                if (thou === undefined) thou = ci.thousandSeparator;
+                if (places === undefined) places = ci.priceDecimalPlaces;
+            }
+        } catch (e) {}
+        places = parseInt(places, 10);
+        return {
+            dec: dec || ",",
+            thou: thou === undefined ? " " : thou,
+            places: isNaN(places) ? 2 : Math.abs(places)
+        };
+    }
+
+    // Text nečteme přes innerText — Shoptet drží stránku v blank-mode
+    // (visibility:hidden), kde innerText vrací prázdno. Procházíme uzly ručně
+    // a přeskakujeme jen skutečně skryté varianty.
+    function readVisibleText(el) {
+        var out = "";
+        var nodes = el.childNodes;
+        for (var i = 0; i < nodes.length; i++) {
+            var n = nodes[i];
+            if (n.nodeType === 3) { out += n.nodeValue; continue; }
+            if (n.nodeType !== 1) continue;
+            if (n.classList && (n.classList.contains("no-display") || n.classList.contains("noDisplay"))) continue;
+            if (window.getComputedStyle && getComputedStyle(n).display === "none") continue;
+            out += readVisibleText(n);
+        }
+        return out;
+    }
+
+    // "1 234,50 Kč" → [1234.5] ; "749 Kč – 899 Kč" → [749, 899] (rozsah = neukazujeme)
+    function extractNumbers(text, sep) {
+        var s = String(text).replace(/[\u00a0\u202f\u2009]/g, " ");
+        s = s.replace(/(\d)[ ](?=\d)/g, "$1");
+        if (sep.thou && sep.thou.trim()) {
+            s = s.replace(new RegExp("(\\d)" + escapeRe(sep.thou) + "(?=\\d)", "g"), "$1");
+        }
+        var out = [];
+        var re = /\d+(?:[.,]\d+)?/g;
+        var m;
+        while ((m = re.exec(s)) !== null) {
+            var value = parseFloat(m[0].replace(",", "."));
+            if (!isNaN(value)) out.push(value);
+        }
+        return out;
+    }
+
+    function round(value, sep, mode) {
+        switch (mode) {
+            case "ceil": return Math.ceil(value);
+            case "floor": return Math.floor(value);
+            case "round": return Math.round(value);
+            default:
+                var f = Math.pow(10, sep.places);
+                return Math.round(value * f) / f;
+        }
+    }
+
+    // Primárně Shoptetí formátovač — drží se nastavení měny e-shopu
+    // (celé číslo bez desetinných míst, jinak 749,50 Kč).
+    function format(value, sep) {
+        try {
+            if (typeof Number.prototype.ShoptetFormatAsCurrency === "function") {
+                return value.ShoptetFormatAsCurrency();
+            }
+        } catch (e) {}
+        var cfg = (window.shoptet && shoptet.config) || {};
+        var symbol = cfg.currencySymbol;
+        if (symbol === undefined) {
+            try { symbol = getShoptetDataLayer("currencyInfo").symbol; } catch (e) { symbol = "Kč"; }
+        }
+        var left = false;
+        try {
+            left = cfg.currencySymbolLeft !== undefined
+                ? Boolean(parseInt(cfg.currencySymbolLeft, 10))
+                : Boolean(parseInt(getShoptetDataLayer("currencyInfo").symbolLeft, 10));
+        } catch (e) {}
+        var places = value % 1 === 0 ? 0 : sep.places;
+        var chunks = Math.abs(value).toFixed(places).split(".");
+        chunks[0] = chunks[0].replace(/\B(?=(\d{3})+(?!\d))/g, sep.thou);
+        var number = (value < 0 ? "-" : "") + chunks.join(sep.dec);
+        return (left ? symbol + number : number + " " + symbol).trim();
+    }
+
+    // "-9% s kódem DEVITKA" → { percent: 9, code: "DEVITKA" }
+    function parseFlag(flagEl) {
+        if (!flagEl) return null;
+        var m = flagEl.textContent.trim().match(/-?(\d+)%\s+s kódem\s+(\S+)/i);
+        if (!m) return null;
+        var percent = parseFloat(m[1]);
+        if (!(percent > 0) || percent >= 100) return null;
+        return { percent: percent, code: m[2] };
+    }
+
+    // Z prvku s cenou spočítá cenu po kupónu. Vrátí null, když cena není
+    // jednoznačná (rozsah "od–do", nezvolená varianta, nula) — radši nic než nesmysl.
+    function priceAfterCoupon(priceEl, percent, rounding) {
+        if (!priceEl) return null;
+        var sep = separators();
+        var raw = readVisibleText(priceEl).trim();
+        var numbers = extractNumbers(raw, sep);
+        if (numbers.length !== 1 || !(numbers[0] > 0)) return null;
+        var base = numbers[0];
+        var value = round(base * (1 - percent / 100), sep, rounding);
+        if (!(value > 0) || value >= base) return null;
+        return {
+            base: base,
+            value: value,
+            prefix: /^\s*od\b/i.test(raw) ? "od " : "",
+            baseText: format(base, sep),
+            valueText: format(value, sep)
+        };
+    }
+
+    function escapeRe(s) {
+        return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    return {
+        separators: separators,
+        readVisibleText: readVisibleText,
+        extractNumbers: extractNumbers,
+        round: round,
+        format: format,
+        parseFlag: parseFlag,
+        priceAfterCoupon: priceAfterCoupon
+    };
+})();
+
 // Kupónová akce z flagu (flag-kupon-sleva, flag-black10/20)
 // FIX 2026-07-22: flag nemusí být uvnitř .p-image — u produktů s gallery-new/splide
 // ho Shoptet vykresluje v .p-image-wrapper (flags-inline). Hledáme proto v celém
@@ -297,21 +439,8 @@ document.addEventListener("DOMContentLoaded", function() {
         pending = setTimeout(updatePrice, 50);
     }
 
-    // Text ceny nečteme přes innerText — Shoptet drží stránku v blank-mode
-    // (visibility:hidden), kde innerText vrací prázdno. Procházíme proto uzly ručně
-    // a přeskakujeme jen skutečně skryté varianty (no-display / noDisplay / display:none).
     function readPriceText(el) {
-        var out = "";
-        var nodes = el.childNodes;
-        for (var i = 0; i < nodes.length; i++) {
-            var n = nodes[i];
-            if (n.nodeType === 3) { out += n.nodeValue; continue; }
-            if (n.nodeType !== 1) continue;
-            if (n.classList && (n.classList.contains("no-display") || n.classList.contains("noDisplay"))) continue;
-            if (window.getComputedStyle && getComputedStyle(n).display === "none") continue;
-            out += readPriceText(n);
-        }
-        return out;
+        return LedererCoupon.readVisibleText(el);
     }
 
     function visiblePriceElement() {
@@ -513,81 +642,22 @@ document.addEventListener("DOMContentLoaded", function() {
         return el;
     }
 
-    // --- pomocné ------------------------------------------------------------
+    // --- pomocné (výpočet ceny je ve sdíleném LedererCoupon) ----------------
 
     function separators() {
-        var cfg = (window.shoptet && shoptet.config) || {};
-        var dec = cfg.decSeparator;
-        var thou = cfg.thousandSeparator;
-        var places = cfg.decPlaces;
-        try {
-            var ci = getShoptetDataLayer("currencyInfo");
-            if (ci) {
-                if (dec === undefined) dec = ci.decimalSeparator;
-                if (thou === undefined) thou = ci.thousandSeparator;
-                if (places === undefined) places = ci.priceDecimalPlaces;
-            }
-        } catch (e) {}
-        places = parseInt(places, 10);
-        return {
-            dec: dec || ",",
-            thou: thou === undefined ? " " : thou,
-            places: isNaN(places) ? 2 : Math.abs(places)
-        };
+        return LedererCoupon.separators();
     }
 
-    // "1 234,50 Kč" → [1234.5] ; "749 Kč – 899 Kč" → [749, 899] (rozsah = neukazujeme)
     function extractNumbers(text, sep) {
-        var s = String(text).replace(/[\u00a0\u202f\u2009]/g, " ");
-        s = s.replace(/(\d)[ ](?=\d)/g, "$1");
-        if (sep.thou && sep.thou.trim()) {
-            s = s.replace(new RegExp("(\\d)" + escapeRe(sep.thou) + "(?=\\d)", "g"), "$1");
-        }
-        var out = [];
-        var re = /\d+(?:[.,]\d+)?/g;
-        var m;
-        while ((m = re.exec(s)) !== null) {
-            var value = parseFloat(m[0].replace(",", "."));
-            if (!isNaN(value)) out.push(value);
-        }
-        return out;
+        return LedererCoupon.extractNumbers(text, sep);
     }
 
     function round(value, sep) {
-        switch (CONFIG.rounding) {
-            case "ceil": return Math.ceil(value);
-            case "floor": return Math.floor(value);
-            case "round": return Math.round(value);
-            default:
-                var f = Math.pow(10, sep.places);
-                return Math.round(value * f) / f;
-        }
+        return LedererCoupon.round(value, sep, CONFIG.rounding);
     }
 
-    // Primárně Shoptetí formátovač — drží se nastavení měny e-shopu
-    // (celé číslo bez desetinných míst, jinak 749,50 Kč).
     function format(value, sep) {
-        try {
-            if (typeof Number.prototype.ShoptetFormatAsCurrency === "function") {
-                return value.ShoptetFormatAsCurrency();
-            }
-        } catch (e) {}
-        var cfg = (window.shoptet && shoptet.config) || {};
-        var symbol = cfg.currencySymbol;
-        if (symbol === undefined) {
-            try { symbol = getShoptetDataLayer("currencyInfo").symbol; } catch (e) { symbol = "Kč"; }
-        }
-        var left = false;
-        try {
-            left = cfg.currencySymbolLeft !== undefined
-                ? Boolean(parseInt(cfg.currencySymbolLeft, 10))
-                : Boolean(parseInt(getShoptetDataLayer("currencyInfo").symbolLeft, 10));
-        } catch (e) {}
-        var places = value % 1 === 0 ? 0 : sep.places;
-        var chunks = Math.abs(value).toFixed(places).split(".");
-        chunks[0] = chunks[0].replace(/\B(?=(\d{3})+(?!\d))/g, sep.thou);
-        var number = (value < 0 ? "-" : "") + chunks.join(sep.dec);
-        return (left ? symbol + number : number + " " + symbol).trim();
+        return LedererCoupon.format(value, sep);
     }
 
     function strong(text, className) {
@@ -604,10 +674,121 @@ document.addEventListener("DOMContentLoaded", function() {
         return el;
     }
 
-    function escapeRe(s) {
-        return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    }
 });
+
+// Cena po kupónu i ve výpisu produktů (kategorie, vyhledávání, související)
+// Chip se vkládá pod cenu na kartě. Barvu si bere z kupónového flagu té karty —
+// kampaňové CSS v adminu flag přebarvuje, takže se cena barví spolu s kampaní.
+(function() {
+
+    var CONFIG = {
+        rounding: "auto",
+        label: "s kódem",
+        // podíl barvy flagu v pozadí chipu
+        backgroundAlpha: 0.1
+    };
+
+    var FLAGS = ".flag-kupon-sleva, .flag-black10, .flag-black20";
+    var CLASS = "p-coupon-price";
+
+    function decorate(card) {
+        if (card.querySelector("." + CLASS)) return;
+        var flag = card.querySelector(FLAGS);
+        if (!flag) return;
+        var info = LedererCoupon.parseFlag(flag);
+        if (!info) return;
+        var priceBox = card.querySelector(".prices .price-final") || card.querySelector(".price-final");
+        if (!priceBox) return;
+
+        // U zlevněných produktů je uvnitř .price-final i přeškrtnutá původní cena
+        // (.price-standard) — výsledná částka je v <strong>, tak počítáme z něj.
+        var priceSource = priceBox.querySelector("strong") || priceBox;
+
+        // null = cena není jednoznačná (rozsah, nezvolená varianta, nula) → nic nepíšeme
+        var price = LedererCoupon.priceAfterCoupon(priceSource, info.percent, CONFIG.rounding);
+        if (!price) return;
+
+        var chip = document.createElement("span");
+        chip.className = CLASS;
+        chip.textContent = CONFIG.label + " " + price.prefix + price.valueText;
+        paint(chip, flag);
+        priceBox.parentNode.insertBefore(chip, priceBox.nextSibling);
+    }
+
+    // Kampaňové CSS obarvuje flag gradientem, tak sáhneme po jeho první barvě;
+    // jinak po background-color (Shoptet ho dává inline z nastavení štítku).
+    function paint(chip, flag) {
+        var rgb = flagColor(flag);
+        if (!rgb) return; // necháme výchozí barvu z CSS
+        rgb = darkenForContrast(rgb);
+        chip.style.color = "rgb(" + rgb.join(",") + ")";
+        chip.style.backgroundColor = "rgba(" + rgb.join(",") + "," + CONFIG.backgroundAlpha + ")";
+    }
+
+    function flagColor(flag) {
+        if (!window.getComputedStyle) return null;
+        var cs = getComputedStyle(flag);
+        var gradient = String(cs.backgroundImage || "").match(/rgba?\([^)]+\)/);
+        return (gradient && parseRgb(gradient[0])) || parseRgb(cs.backgroundColor);
+    }
+
+    function parseRgb(value) {
+        var m = String(value).match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,/\s]+([\d.]+))?/i);
+        if (!m) return null;
+        if (m[4] !== undefined && parseFloat(m[4]) === 0) return null; // průhledné
+        return [Math.round(+m[1]), Math.round(+m[2]), Math.round(+m[3])];
+    }
+
+    // Světlý štítek by na bílé kartě nebyl čitelný — ztmavíme na kontrast 4,5:1.
+    function darkenForContrast(rgb) {
+        var out = rgb.slice();
+        for (var i = 0; i < 12 && contrastOnWhite(out) < 4.5; i++) {
+            out = [Math.round(out[0] * 0.85), Math.round(out[1] * 0.85), Math.round(out[2] * 0.85)];
+        }
+        return out;
+    }
+
+    function contrastOnWhite(rgb) {
+        var lum = 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]);
+        return 1.05 / (lum + 0.05);
+    }
+
+    function channel(value) {
+        value = value / 255;
+        return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+    }
+
+    function run() {
+        var cards = document.querySelectorAll(".p");
+        for (var i = 0; i < cards.length; i++) decorate(cards[i]);
+    }
+
+    var pending = null;
+    function schedule() {
+        clearTimeout(pending);
+        pending = setTimeout(run, 120);
+    }
+
+    function init() {
+        run();
+        [
+            "ShoptetDOMPageContentLoaded",
+            "ShoptetDOMPageMoreProductsLoaded",
+            "ShoptetDOMSearchResultsLoaded",
+            "ShoptetDOMContentChanged"
+        ].forEach(function(evt) {
+            document.addEventListener(evt, schedule);
+        });
+        // stránkování, filtry a "načíst další" dosypávají karty i mimo Shoptet události
+        if (window.MutationObserver && document.body) {
+            new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+        }
+    }
+
+    document.readyState === "loading"
+        ? document.addEventListener("DOMContentLoaded", init)
+        : init();
+})();
 
 // Doprava 49 Kč / ZDARMA na detailu produktu
 // FIX 2026-07-21: cena se čte primárně ze Shoptet data layeru — u přihlášených
