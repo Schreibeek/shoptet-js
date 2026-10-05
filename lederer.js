@@ -790,7 +790,7 @@ document.addEventListener("DOMContentLoaded", function() {
         : init();
 })();
 
-// Doprava 49 Kč / ZDARMA na detailu produktu
+// Doprava 49 Kč / ZDARMA na detailu produktu (ZDARMA od 1999 Kč včetně)
 // FIX 2026-07-21: cena se čte primárně ze Shoptet data layeru — u přihlášených
 // s věrnostní slevou je cena desetinná (489,02 Kč) a původní parsování přes
 // replace(/[^\d]/g,"") z ní udělalo 48902 → falešná "Doprava ZDARMA".
@@ -812,7 +812,7 @@ document.addEventListener("DOMContentLoaded", function() {
     doprava.style.marginTop = "-5px";
     doprava.style.marginBottom = "5px";
     doprava.style.color = "#dfb072";
-    doprava.textContent = price > 498 ? "Doprava ZDARMA!" : "Doprava jen za 49 Kč!";
+    doprava.textContent = price >= 1999 ? "Doprava ZDARMA!" : "Doprava jen za 49 Kč!";
     box.insertAdjacentElement("afterend", doprava);
   }
 });
