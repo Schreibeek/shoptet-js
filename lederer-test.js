@@ -110,7 +110,61 @@
     });
   }
 
+  // Značky: místo plovoucího karuselu klidný pruh mezi linkami (každá značka jednou, odkaz na všechny značky).
+  function brands() {
+    var block = d.querySelector('.partners-block');
+    if (!block || d.querySelector('.ll-brands')) return;
+    var seen = {}, items = [];
+    qsa('.partners-block .partners__item a').forEach(function (a) {
+      var href = a.getAttribute('href') || '';
+      var img = a.querySelector('img');
+      if (!img || !href || seen[href]) return;
+      var src = img.currentSrc || img.getAttribute('data-src') || img.getAttribute('src') || '';
+      if (!src || /^data:/.test(src)) return;
+      seen[href] = 1;
+      items.push({ href: href, src: src, alt: img.getAttribute('alt') || a.getAttribute('title') || '' });
+    });
+    if (items.length < 4) return;
+    var wrap = d.createElement('div');
+    wrap.className = 'container';
+    var sec = d.createElement('section');
+    sec.className = 'll-brands';
+    sec.setAttribute('aria-label', 'Značky');
+    var head = d.createElement('div');
+    head.className = 'll-brands__head';
+    var eb = d.createElement('span');
+    eb.className = 'll-brands__eyebrow';
+    eb.textContent = 'Značky, které používáme v salonu';
+    var all = d.createElement('a');
+    all.className = 'll-brands__all';
+    all.href = '/znacky/';
+    all.textContent = 'Všechny značky';
+    head.appendChild(eb);
+    head.appendChild(all);
+    var ul = d.createElement('ul');
+    ul.className = 'll-brands__list';
+    items.slice(0, 10).forEach(function (it) {
+      var li = d.createElement('li');
+      var a = d.createElement('a');
+      a.href = it.href;
+      a.setAttribute('aria-label', it.alt || it.href);
+      var im = d.createElement('img');
+      im.src = it.src;
+      im.alt = it.alt;
+      im.loading = 'lazy';
+      a.appendChild(im);
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+    sec.appendChild(head);
+    sec.appendChild(ul);
+    wrap.appendChild(sec);
+    block.parentNode.insertBefore(wrap, block.nextSibling);
+    root.classList.add('ll-has-brands');
+  }
+
   onReady(badge);
   onReady(homepage);
   onReady(stripEmoji);
+  onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
 })();
