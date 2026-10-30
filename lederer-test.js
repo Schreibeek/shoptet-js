@@ -56,5 +56,47 @@
     });
   }
 
+  // ---------- Homepage: doplnění podle šablony PageHome v design systému ----------
+  function qsa(sel) { return Array.prototype.slice.call(d.querySelectorAll(sel)); }
+  function icon(paths) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>';
+  }
+  // Pilíře (TrustBar): ikona Lucide v kruhu a krátký text pod titulkem. Texty jsou z design systému.
+  var TRUST = [
+    { icon: '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
+      text: 'Prodáváme jen produkty, které používáme v našem salonu.' },
+    { icon: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+      text: 'Šampony, masky, styling i doplňky stravy pro zdravé vlasy.' },
+    { icon: '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>',
+      text: 'Napište nám nebo využijte vlasovou poradnu.' }
+  ];
+  // Popisky nad nadpisy sekcí (SectionHeader).
+  var EYEBROWS = { 'Doporučujeme': 'Výběr ze salonu', 'Novinky': 'Právě dorazilo', 'Nové články': 'Z blogu', 'Recenze': 'Ověřeno zákazníky' };
+
+  function homepage() {
+    if (!(d.body.classList.contains('type-index') || location.pathname === '/')) return;
+    qsa('.list-icon.top .list-icon-detail').forEach(function (item, i) {
+      if (!TRUST[i] || item.querySelector('.ll-trust-icon')) return;
+      var ic = d.createElement('span');
+      ic.className = 'll-trust-icon';
+      ic.innerHTML = icon(TRUST[i].icon);
+      item.insertBefore(ic, item.firstChild);
+      var p = d.createElement('p');
+      p.className = 'll-trust-text';
+      p.textContent = TRUST[i].text;
+      item.appendChild(p);
+    });
+    qsa('.homepage-group-title').forEach(function (h) {
+      var label = EYEBROWS[(h.textContent || '').replace(/\s+/g, ' ').trim()];
+      var prev = h.previousElementSibling;
+      if (!label || (prev && prev.classList.contains('ll-eyebrow'))) return;
+      var e = d.createElement('span');
+      e.className = 'll-eyebrow';
+      e.textContent = label;
+      h.parentNode.insertBefore(e, h);
+    });
+  }
+
   onReady(badge);
+  onReady(homepage);
 })();
