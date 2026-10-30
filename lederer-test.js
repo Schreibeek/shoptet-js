@@ -98,7 +98,7 @@
   }
 
   // Emoji v menu a horní liště: design systém je povoluje jen v promo řádcích a newsletterech, v testu je skryjeme.
-  var EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F000}-\u{1F2FF}]️?|️|‍/gu;
+  var EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{1F000}-\u{1F2FF}]\uFE0F?|\uFE0F|\u200D/gu;
   function stripEmoji() {
     qsa('#navigation .menu-level-1 > li > a, .menu-helper .menu-level-1 > li > a, .top-navigation-bar-menu a').forEach(function (a) {
       var w = d.createTreeWalker(a, NodeFilter.SHOW_TEXT, null);
