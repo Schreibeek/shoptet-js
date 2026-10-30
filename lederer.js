@@ -1,3 +1,31 @@
+// Testovací vzhled (nový design podle design systému v2), který má zatím vidět jen David
+// ?lltest=1 v adrese ho zapne, ?lltest=0 nebo tlačítko Vypnout ve štítku vlevo dole vypne. Platí jen v prohlížeči, kde se zapnul.
+// Bez zapnutí se nic dalšího nenačte a web je pro zákazníky beze změny. Soubory: shoptet-css/lederer-test.css a lederer-test.js.
+
+(function () {
+  var on = false;
+  try {
+    var m = /[?&]lltest=([01])(?:&|$)/.exec(location.search);
+    if (m) {
+      if (m[1] === '1') localStorage.setItem('lltest', '1');
+      else localStorage.removeItem('lltest');
+    }
+    on = localStorage.getItem('lltest') === '1';
+  } catch (e) {}
+  if (!on) return;
+
+  var t = Date.now();
+  document.documentElement.classList.add('ll-test');
+  var css = document.createElement('link');
+  css.rel = 'stylesheet';
+  css.id = 'll-test-css';
+  css.href = 'https://schreibeek.github.io/shoptet-css/lederer-test.css?t=' + t;
+  document.head.appendChild(css);
+  var js = document.createElement('script');
+  js.src = 'https://schreibeek.github.io/shoptet-js/lederer-test.js?t=' + t;
+  (document.body || document.head).appendChild(js);
+})();
+
 // Banner svíčka zdarma
 
 document.addEventListener('DOMContentLoaded', function () {
