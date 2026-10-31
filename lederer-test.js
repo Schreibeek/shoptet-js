@@ -223,8 +223,25 @@
   // klik na něj zavře list stejně jako křížek (tlačítko šablony Zavřít filtr). „Vymazat filtry“ vedle něj zůstává odkazem.
   // Filtr se po překreslení vyměňuje, proto delegace.
   function filtersSheet() {
-    // Po zaškrtnutí šablona filtr překreslí i s listem a ten by odskočil nahoru: pozici posunu si pamatujeme a vrátíme
+    var mq = window.matchMedia ? window.matchMedia('(max-width: 767px)') : null;
+    var html = d.documentElement;
     var lastTop = 0;
+    function unveil() { return d.querySelector('.filters-unveil-button-wrapper .unveil-button'); }
+    // List přes celou obrazovku jen po kliknutí na Otevřít filtr (třída ll-filters-sheet), ne když filtr otevře šablona sama
+    d.addEventListener('click', function (e) {
+      if (!e.target.closest || !e.target.closest('.filters-unveil-button-wrapper .unveil-button')) return;
+      lastTop = 0;
+      setTimeout(function () { html.classList.toggle('ll-filters-sheet', d.body.classList.contains('filters-visible')); }, 0);
+    });
+    // Stránka s vybraným filtrem se načte s otevřeným filtrem: na mobilu ho zavřeme, ať jsou vidět produkty
+    function closeOnLoad() {
+      if (mq && mq.matches && d.body.classList.contains('filters-visible') && !html.classList.contains('ll-filters-sheet')) {
+        var b = unveil();
+        if (b) b.click();
+      }
+    }
+    if (d.readyState === 'complete') setTimeout(closeOnLoad, 300); else window.addEventListener('load', closeOnLoad);
+    // Po zaškrtnutí šablona filtr překreslí i s listem a ten by odskočil nahoru: pozici posunu si pamatujeme a vrátíme
     d.addEventListener('scroll', function (e) {
       var t = e.target;
       if (t && t.classList && t.classList.contains('filters-wrapper')) lastTop = t.scrollTop;
@@ -240,7 +257,7 @@
       if (!d.body.classList.contains('filters-visible')) return;
       if (!window.matchMedia || !window.matchMedia('(max-width: 767px)').matches) return;
       if (!e.target.closest || !e.target.closest('#filters .filter-total-count')) return;
-      var b = d.querySelector('.filters-unveil-button-wrapper .unveil-button');
+      var b = unveil();
       if (!b) return;
       e.preventDefault();
       b.click();
