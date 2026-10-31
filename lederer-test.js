@@ -100,7 +100,7 @@
   // Emoji v menu a horní liště: design systém je povoluje jen v promo řádcích a newsletterech, v testu je skryjeme.
   var EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{1F000}-\u{1F2FF}]\uFE0F?|\uFE0F|\u200D/gu;
   function stripEmoji() {
-    qsa('#navigation .menu-level-1 > li > a, .menu-helper .menu-level-1 > li > a, .top-navigation-bar-menu a, .empty-cart-boxes li > a').forEach(function (a) {
+    qsa('#navigation .menu-level-1 > li > a, .menu-helper .menu-level-1 > li > a, .top-navigation-bar-menu a, .empty-cart-boxes li > a, .breadcrumbs a, .breadcrumbs [itemprop="name"], body.in-blog .sectionDescription h1').forEach(function (a) {
       var w = d.createTreeWalker(a, NodeFilter.SHOW_TEXT, null);
       var n;
       while ((n = w.nextNode())) {
@@ -346,6 +346,14 @@
   onReady(benefits);
   onReady(loyalty);
   onReady(stripEmoji);
+  // Prázdné odstavce z editoru (jen &nbsp;) na textových stránkách a v článcích dělají díry: označit a schovat (třída ll-blank v CSS).
+  function blankParas() {
+    qsa('body.type-page .pageArticleDetail [itemprop="about"] p, body.type-post .news-item-detail .text p').forEach(function (p) {
+      if (p.querySelector('img, iframe, video, picture, svg, input, button')) return;
+      if (!p.textContent.replace(/[\s\u00a0]+/g, '')) p.classList.add('ll-blank');
+    });
+  }
+  onReady(blankParas);
   onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
   onReady(function () {
     ratings();
