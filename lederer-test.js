@@ -292,10 +292,26 @@
       });
       sum.appendChild(box);
     }
+    // Kopie termínu doručení do souhrnu pod dopravu zdarma (pořadí dá CSS order), originál nad souhrnem CSS schová.
+    // Hned v observeru (bez čekání), ať po překreslení košíku termín neproblikne na původním místě.
+    function date() {
+      var src = d.querySelector('#cart-wrapper .cart-content > .text-center > .delivery-time');
+      var wrap = d.querySelector('#cart-wrapper .cart-summary .extras-wrapper');
+      if (!src || !wrap) return;
+      var cur = wrap.querySelector('.ll-cart-date');
+      if (cur && cur.textContent === src.textContent) return;
+      var box = d.createElement('div');
+      box.className = 'll-cart-date';
+      var copy = src.cloneNode(true);
+      copy.removeAttribute('data-testid');
+      box.appendChild(copy);
+      if (cur) wrap.replaceChild(box, cur); else wrap.appendChild(box);
+    }
+    date();
     place();
     if (!window.MutationObserver) return;
     var t = 0;
-    new MutationObserver(function () { clearTimeout(t); t = setTimeout(place, 50); }).observe(d.body, { childList: true, subtree: true });
+    new MutationObserver(function () { date(); clearTimeout(t); t = setTimeout(place, 50); }).observe(d.body, { childList: true, subtree: true });
   }
 
   onReady(badge);
