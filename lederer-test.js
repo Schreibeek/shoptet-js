@@ -219,8 +219,9 @@
     });
   }
 
-  // Otevřený filtr na mobilu (MobileFilters): patička „Zobrazit produkty (32)“ je počet z .filter-section-count,
-  // klik na ni zavře list stejně jako křížek (tlačítko šablony Zavřít filtr). Filtr se po překreslení vyměňuje, proto delegace.
+  // Otevřený filtr na mobilu (MobileFilters): tlačítko „Zobrazit produkty (32)“ v patičce je počet .filter-total-count,
+  // klik na něj zavře list stejně jako křížek (tlačítko šablony Zavřít filtr). „Vymazat filtry“ vedle něj zůstává odkazem.
+  // Filtr se po překreslení vyměňuje, proto delegace.
   function filtersSheet() {
     // Po zaškrtnutí šablona filtr překreslí i s listem a ten by odskočil nahoru: pozici posunu si pamatujeme a vrátíme
     var lastTop = 0;
@@ -238,7 +239,7 @@
     d.addEventListener('click', function (e) {
       if (!d.body.classList.contains('filters-visible')) return;
       if (!window.matchMedia || !window.matchMedia('(max-width: 767px)').matches) return;
-      if (!e.target.closest || !e.target.closest('#filters .filter-section-count')) return;
+      if (!e.target.closest || !e.target.closest('#filters .filter-total-count')) return;
       var b = d.querySelector('.filters-unveil-button-wrapper .unveil-button');
       if (!b) return;
       e.preventDefault();
