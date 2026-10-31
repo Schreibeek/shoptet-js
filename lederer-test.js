@@ -380,6 +380,15 @@
     });
   }
   onReady(reviewText);
+  // Přidat hodnocení rozbaluje formulář třídou visible, ale aria-expanded nechává false; srovnáme ho se stavem formuláře.
+  function rateFormExpanded() {
+    var btn = d.querySelector('[data-testid="buttonAddRating"]'), form = d.getElementById('rate-form');
+    if (!btn || !form) return;
+    var sync = function () { btn.setAttribute('aria-expanded', form.classList.contains('visible') ? 'true' : 'false'); };
+    sync();
+    new MutationObserver(sync).observe(form, { attributes: true, attributeFilter: ['class'] });
+  }
+  onReady(rateFormExpanded);
   onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
   onReady(function () {
     ratings();
