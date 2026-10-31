@@ -264,7 +264,42 @@
     });
   }
 
+  // Košík (DS PageCart): kontakt z hlavičky košíku („Potřebujete pomoci?“) jako pomoc dole v panelu se souhrnem.
+  // Košík se po změně množství překresluje, proto se pomoc vkládá znovu.
+  function cartHelp() {
+    if (!d.getElementById('cart-wrapper')) return;
+    function tel(n) { var m = n.replace(/\s+/g, '').match(/^(\+\d{3})(\d{3})(\d{3})(\d{3})$/); return m ? m.slice(1).join(' ') : n; }
+    function place() {
+      var sum = d.querySelector('#cart-wrapper .cart-summary');
+      if (!sum || sum.querySelector('.ll-cart-help')) return;
+      var src = d.querySelector('.cart-header__contact');
+      var mail = src && src.querySelector('a[href^="mailto:"]');
+      var phone = src && src.querySelector('a[href^="tel:"]');
+      if (!mail && !phone) return;
+      var title = src.querySelector('h2, .h4');
+      var box = d.createElement('div');
+      box.className = 'll-cart-help';
+      var t = d.createElement('span');
+      t.textContent = title ? title.textContent.trim() : 'Potřebujete pomoci?';
+      box.appendChild(t);
+      [mail, phone].forEach(function (a) {
+        if (!a) return;
+        var href = a.getAttribute('href');
+        var link = d.createElement('a');
+        link.href = href;
+        link.textContent = /^tel:/.test(href) ? tel(href.slice(4)) : href.replace(/^mailto:/, '');
+        box.appendChild(link);
+      });
+      sum.appendChild(box);
+    }
+    place();
+    if (!window.MutationObserver) return;
+    var t = 0;
+    new MutationObserver(function () { clearTimeout(t); t = setTimeout(place, 50); }).observe(d.body, { childList: true, subtree: true });
+  }
+
   onReady(badge);
+  onReady(cartHelp);
   onReady(filtersSheet);
   onReady(homepage);
   onReady(benefits);
