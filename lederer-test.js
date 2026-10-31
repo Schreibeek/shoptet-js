@@ -350,7 +350,11 @@
   function blankParas() {
     qsa('body.type-page .pageArticleDetail [itemprop="about"] p, body.type-post .news-item-detail .text p').forEach(function (p) {
       if (p.querySelector('img, iframe, video, picture, svg, input, button')) return;
-      if (!p.textContent.replace(/[\s\u00a0]+/g, '')) p.classList.add('ll-blank');
+      if (!p.textContent.replace(/[\s\u00a0]+/g, '')) { p.classList.add('ll-blank'); return; }
+      // mezera (&nbsp;) na začátku odstavce posouvala oddíly o znak doprava
+      var f = p.firstChild;
+      while (f && f.nodeType === 3 && !f.nodeValue.replace(/[\s\u00a0]+/g, '')) { var n = f.nextSibling; p.removeChild(f); f = n; }
+      if (f && f.nodeType === 3) f.nodeValue = f.nodeValue.replace(/^[\s\u00a0]+/, '');
     });
   }
   onReady(blankParas);
