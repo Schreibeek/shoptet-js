@@ -328,9 +328,10 @@
     if (!d.body.classList.contains('ordering-process')) return;
     function run() {
       qsa('.payment-shipping-price, .recapitulation-shipping-billing-info > span, .cart-summary .price, .extra-delivery-price').forEach(function (e) {
-        if (e.children.length) return;
-        var t = e.textContent;
-        if (/^\s*ZDARMA\s*$/.test(t)) e.textContent = t.replace('ZDARMA', 'Zdarma');
+        // jen textové uzly: na mobilu šablona vkládá do ceny i logo platby
+        for (var n = e.firstChild; n; n = n.nextSibling) {
+          if (n.nodeType === 3 && /^\s*ZDARMA\s*$/.test(n.nodeValue)) n.nodeValue = n.nodeValue.replace('ZDARMA', 'Zdarma');
+        }
       });
     }
     run();
