@@ -205,10 +205,31 @@
     });
   }
 
+  // Hodnocení jako v DS (ll-rating__value): hodnota s desetinnou čárkou do data-ll-value, CSS ji vypíše za hvězdy.
+  // Karty ji mají v data-micro-rating-value, detail jen ve skrytém textu ("Průměrné hodnocení produktu je 4,6 z 5 hvězdiček").
+  function ratings() {
+    qsa('.stars-wrapper:not([data-ll-value])').forEach(function (el) {
+      var v = parseFloat(el.getAttribute('data-micro-rating-value'));
+      if (!(v > 0)) {
+        var sr = el.querySelector('.sr-only');
+        var m = sr && sr.textContent.match(/(\d+(?:[.,]\d+)?)\s*z\s*5/);
+        v = m ? parseFloat(m[1].replace(',', '.')) : 0;
+      }
+      if (v > 0) el.setAttribute('data-ll-value', v.toFixed(1).replace('.', ','));
+    });
+  }
+
   onReady(badge);
   onReady(homepage);
   onReady(benefits);
   onReady(loyalty);
   onReady(stripEmoji);
   onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
+  onReady(function () {
+    ratings();
+    // Karty donačtené filtrem, řazením nebo stránkováním
+    if (!window.MutationObserver) return;
+    var t = 0;
+    new MutationObserver(function () { clearTimeout(t); t = setTimeout(ratings, 60); }).observe(d.body, { childList: true, subtree: true });
+  });
 })();
