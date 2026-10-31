@@ -370,6 +370,16 @@
     d.addEventListener('keydown', function (e) { if (KEYS.test(e.key)) root.classList.remove('ll-pointer'); }, true);
   }
   focusMode();
+  // Texty recenzí vypisuje Shoptet s odřádkováním a mezerami na začátku; se zachovanými řádky (pre-line) by začínaly prázdným řádkem.
+  function reviewText() {
+    qsa('#ratingsList .vote-content').forEach(function (el) {
+      var f = el.firstChild, l = el.lastChild;
+      if (f && f.nodeType === 3) f.nodeValue = f.nodeValue.replace(/^\s+/, '');
+      if (l && l.nodeType === 3) l.nodeValue = l.nodeValue.replace(/\s+$/, '');
+      el.classList.add('ll-pre');
+    });
+  }
+  onReady(reviewText);
   onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
   onReady(function () {
     ratings();
