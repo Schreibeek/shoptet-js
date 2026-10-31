@@ -100,7 +100,7 @@
   // Emoji v menu a horní liště: design systém je povoluje jen v promo řádcích a newsletterech, v testu je skryjeme.
   var EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{1F000}-\u{1F2FF}]\uFE0F?|\uFE0F|\u200D/gu;
   function stripEmoji() {
-    qsa('#navigation .menu-level-1 > li > a, .menu-helper .menu-level-1 > li > a, .top-navigation-bar-menu a').forEach(function (a) {
+    qsa('#navigation .menu-level-1 > li > a, .menu-helper .menu-level-1 > li > a, .top-navigation-bar-menu a, .empty-cart-boxes li > a').forEach(function (a) {
       var w = d.createTreeWalker(a, NodeFilter.SHOW_TEXT, null);
       var n;
       while ((n = w.nextNode())) {
@@ -307,11 +307,20 @@
       box.appendChild(copy);
       if (cur) wrap.replaceChild(box, cur); else wrap.appendChild(box);
     }
+    // Prázdný košík (i po odebrání poslední položky): telefon v kontaktu ve tvaru +420 724 000 360, emoji v kategoriích pryč
+    function empty() {
+      qsa('#cart-wrapper .cart-empty .contact-box a[href^="tel:"]').forEach(function (a) {
+        var v = tel(a.getAttribute('href').slice(4));
+        if (a.textContent !== v) a.textContent = v;
+      });
+      if (d.querySelector('#cart-wrapper .cart-empty')) stripEmoji();
+    }
+    empty();
     date();
     place();
     if (!window.MutationObserver) return;
     var t = 0;
-    new MutationObserver(function () { date(); clearTimeout(t); t = setTimeout(place, 50); }).observe(d.body, { childList: true, subtree: true });
+    new MutationObserver(function () { date(); clearTimeout(t); t = setTimeout(function () { place(); empty(); }, 50); }).observe(d.body, { childList: true, subtree: true });
   }
 
   onReady(badge);
