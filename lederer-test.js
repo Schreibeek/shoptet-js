@@ -219,7 +219,22 @@
     });
   }
 
+  // Otevřený filtr na mobilu (MobileFilters): patička „Zobrazit produkty (32)“ je počet z .filter-section-count,
+  // klik na ni zavře list stejně jako křížek (tlačítko šablony Zavřít filtr). Filtr se po překreslení vyměňuje, proto delegace.
+  function filtersSheet() {
+    d.addEventListener('click', function (e) {
+      if (!d.body.classList.contains('filters-visible')) return;
+      if (!window.matchMedia || !window.matchMedia('(max-width: 767px)').matches) return;
+      if (!e.target.closest || !e.target.closest('#filters .filter-section-count')) return;
+      var b = d.querySelector('.filters-unveil-button-wrapper .unveil-button');
+      if (!b) return;
+      e.preventDefault();
+      b.click();
+    });
+  }
+
   onReady(badge);
+  onReady(filtersSheet);
   onReady(homepage);
   onReady(benefits);
   onReady(loyalty);
