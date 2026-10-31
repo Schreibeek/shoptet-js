@@ -163,8 +163,33 @@
     root.classList.add('ll-has-brands');
   }
 
+  // Pruh výhod (benefitBanner): barevné obrázky nahradí ikony Lucide podle názvu výhody. Neznámou výhodu nechá s obrázkem.
+  var BENEFIT_ICONS = [
+    { re: /dárek|darek/i, icon: '<path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><rect x="3" y="7" width="18" height="4" rx="1"/>' },
+    { re: /doprav|doruč|doruc/i, icon: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>' },
+    { re: /věrnost|vernost|slev/i, icon: '<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>' },
+    { re: /eko|přírod|prirod|zabal/i, icon: '<path d="M11 20a10 10 0 0 0 10-10 25.9 25.9 0 0 0-1.04-7.281 1 1 0 0 0-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0 0 11 20"/><path d="M2 21a5 5 0 0 1 2.911-4.544C7.613 15.212 8.351 15.24 11 13"/>' }
+  ];
+  function benefits() {
+    qsa('.benefitBanner__item').forEach(function (item) {
+      var pic = item.querySelector('.benefitBanner__picture');
+      if (!pic || pic.classList.contains('ll-has-icon')) return;
+      var img = pic.querySelector('img');
+      var title = item.querySelector('.benefitBanner__title');
+      var label = (title ? title.textContent : '') + ' ' + (img ? img.getAttribute('alt') || '' : '');
+      for (var i = 0; i < BENEFIT_ICONS.length; i++) {
+        if (BENEFIT_ICONS[i].re.test(label)) {
+          pic.insertAdjacentHTML('beforeend', icon(BENEFIT_ICONS[i].icon));
+          pic.classList.add('ll-has-icon');
+          return;
+        }
+      }
+    });
+  }
+
   onReady(badge);
   onReady(homepage);
+  onReady(benefits);
   onReady(stripEmoji);
   onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
 })();
