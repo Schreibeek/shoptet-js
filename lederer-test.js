@@ -187,9 +187,28 @@
     });
   }
 
+  // Sleva po přihlášení na detailu produktu: emoji dárku nahradí ikona Lucide (buybox__note v design systému).
+  function loyalty() {
+    qsa('.loyalty-box-content').forEach(function (box) {
+      var t = box.querySelector('.loyalty-box-text');
+      if (!t || box.querySelector('.ll-loyalty-icon')) return;
+      var w = d.createTreeWalker(t, NodeFilter.SHOW_TEXT, null);
+      var n;
+      while ((n = w.nextNode())) {
+        if (EMOJI.test(n.nodeValue)) { EMOJI.lastIndex = 0; n.nodeValue = n.nodeValue.replace(EMOJI, '').replace(/^\s+/, ''); }
+        EMOJI.lastIndex = 0;
+      }
+      var ic = d.createElement('span');
+      ic.className = 'll-loyalty-icon';
+      ic.innerHTML = icon(BENEFIT_ICONS[0].icon);
+      box.insertBefore(ic, t);
+    });
+  }
+
   onReady(badge);
   onReady(homepage);
   onReady(benefits);
+  onReady(loyalty);
   onReady(stripEmoji);
   onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
 })();
