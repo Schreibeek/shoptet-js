@@ -323,8 +323,23 @@
     new MutationObserver(function () { date(); clearTimeout(t); t = setTimeout(function () { place(); empty(); }, 50); }).observe(d.body, { childList: true, subtree: true });
   }
 
+  // Kroky objednávky: ZDARMA jako Zdarma (Shoptet píše verzálkami; rekapitulaci po změně dopravy překresluje, proto hned v observeru)
+  function zdarma() {
+    if (!d.body.classList.contains('ordering-process')) return;
+    function run() {
+      qsa('.payment-shipping-price, .recapitulation-shipping-billing-info > span, .cart-summary .price, .extra-delivery-price').forEach(function (e) {
+        if (e.children.length) return;
+        var t = e.textContent;
+        if (/^\s*ZDARMA\s*$/.test(t)) e.textContent = t.replace('ZDARMA', 'Zdarma');
+      });
+    }
+    run();
+    if (window.MutationObserver) new MutationObserver(run).observe(d.body, { childList: true, subtree: true });
+  }
+
   onReady(badge);
   onReady(cartHelp);
+  onReady(zdarma);
   onReady(filtersSheet);
   onReady(homepage);
   onReady(benefits);
