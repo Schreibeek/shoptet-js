@@ -16,11 +16,14 @@
 
   var t = Date.now();
   document.documentElement.classList.add('ll-test');
-  var css = document.createElement('link');
-  css.rel = 'stylesheet';
-  css.id = 'll-test-css';
-  css.href = 'https://schreibeek.github.io/shoptet-css/lederer-test.css?t=' + t;
-  document.head.appendChild(css);
+  // Když testovací CSS načetl už skript v záhlaví Shoptetu (bez přebliknutí), nenačítá se podruhé.
+  if (!document.getElementById('ll-test-css')) {
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.id = 'll-test-css';
+    css.href = 'https://schreibeek.github.io/shoptet-css/lederer-test.css?t=' + t;
+    document.head.appendChild(css);
+  }
   var js = document.createElement('script');
   js.src = 'https://schreibeek.github.io/shoptet-js/lederer-test.js?t=' + t;
   (document.body || document.head).appendChild(js);

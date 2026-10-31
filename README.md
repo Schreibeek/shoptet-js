@@ -11,3 +11,4 @@ Testovací vzhled lukaslederer.cz (design systém v2):
 - Přepínač je na začátku lederer.js. Styly jsou v shoptet-css/lederer-test.css pod html.ll-test.
 - Testovací soubory se načítají vždy čerstvé (?t=), po změně stačí nahrát na GitHub.
 - Tlačítko Porovnat ve štítku dočasně vrátí původní vzhled stránky.
+- Bez přebliknutí: skript v záhlaví Shoptetu (HTML kód > Záhlaví, za lederer.css) načte testovací CSS ještě před vykreslením stránky. lederer.js pak CSS nenačítá podruhé, jen štítek a testovací JS.
