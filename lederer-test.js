@@ -358,6 +358,18 @@
     });
   }
   onReady(blankParas);
+  // Kroužek focusu jen při ovládání klávesnicí. Shoptet po zavření okna košíku nebo přihlášení (po najetí myší) vrací focus
+  // na tlačítko a Chrome to bere jako :focus-visible, tlačítko pak zůstalo obtažené. Myš a dotyk drží třídu ll-pointer,
+  // klávesy pro pohyb po stránce (Tab, šipky, Enter, mezerník, Esc…) ji odeberou.
+  function focusMode() {
+    var KEYS = /^(Tab|Arrow|Enter|Escape|Home|End|PageUp|PageDown| $)/;
+    var on = function () { root.classList.add('ll-pointer'); };
+    on();
+    d.addEventListener('pointerdown', on, true);
+    d.addEventListener('mousemove', on, { capture: true, passive: true });
+    d.addEventListener('keydown', function (e) { if (KEYS.test(e.key)) root.classList.remove('ll-pointer'); }, true);
+  }
+  focusMode();
   onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
   onReady(function () {
     ratings();
