@@ -413,6 +413,40 @@
     wait.observe(d.body, { childList: true });
   }
   onReady(orderDrawerEarly);
+
+  // Patička podle DS Footer: text pod logem a štítky plateb a dopravy z alt obrázků (obsah zůstává v administraci).
+  // Prvky mají atribut hidden, zobrazí je jen testovací CSS, takže Porovnat ukáže patičku beze změny.
+  function footerDS() {
+    var f = d.getElementById('footer');
+    if (!f) return;
+    var site = f.querySelector('.site-name');
+    if (site && !site.querySelector('.ll-footer-tagline')) {
+      var p = d.createElement('p');
+      p.className = 'll-footer-tagline';
+      p.hidden = true;
+      p.textContent = 'Profesionální vlasová kosmetika ověřená ve vlastním salonu v Opavě.';
+      site.appendChild(p);
+    }
+    var names = { 'Visa a Mastercard': ['Visa', 'Mastercard'], 'Balik do ruky': ['Balík do ruky'], 'Mobile Pay': ['MobilePay'], 'Bitcoin Pay': ['Bitcoin'] };
+    qsa('#footer .banner .pays').forEach(function (box) {
+      if (box.querySelector('.ll-footer-chips')) return;
+      var wrap = d.createElement('div');
+      wrap.className = 'll-footer-chips';
+      wrap.hidden = true;
+      Array.prototype.forEach.call(box.querySelectorAll('img'), function (img) {
+        var alt = (img.getAttribute('alt') || '').trim();
+        if (!alt) return;
+        (names[alt] || [alt]).forEach(function (t) {
+          var s = d.createElement('span');
+          s.className = 'll-footer-chip';
+          s.textContent = t;
+          wrap.appendChild(s);
+        });
+      });
+      if (wrap.children.length) box.appendChild(wrap);
+    });
+  }
+  onReady(footerDS);
   onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
   onReady(function () {
     ratings();
