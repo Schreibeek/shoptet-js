@@ -414,37 +414,74 @@
   }
   onReady(orderDrawerEarly);
 
-  // Patička podle DS Footer: text pod logem a štítky plateb a dopravy z alt obrázků (obsah zůstává v administraci).
-  // Prvky mají atribut hidden, zobrazí je jen testovací CSS, takže Porovnat ukáže patičku beze změny.
+  // Patička podle DS Footer: text pod logem, sloupce Nákup a Informace z odkazů banneru 8 (s Dárkovými poukazy z horní lišty
+  // a odkazem Kontakt), nadpis Sledujte nás, lišta štítků plateb a dopravy z alt obrázků a Ochrana osobních údajů v právním řádku.
+  // Obsah zůstává v administraci. Nové prvky mají atribut hidden, zobrazí je jen testovací CSS, takže Porovnat ukáže patičku beze změny.
   function footerDS() {
     var f = d.getElementById('footer');
-    if (!f) return;
+    if (!f || f.querySelector('.ll-footer-col')) return;
+    var make = function (tag, cls, text) {
+      var el = d.createElement(tag);
+      if (cls) el.className = cls;
+      if (text) el.textContent = text;
+      return el;
+    };
     var site = f.querySelector('.site-name');
-    if (site && !site.querySelector('.ll-footer-tagline')) {
-      var p = d.createElement('p');
-      p.className = 'll-footer-tagline';
-      p.hidden = true;
-      p.textContent = 'Profesionální vlasová kosmetika ověřená ve vlastním salonu v Opavě.';
-      site.appendChild(p);
+    if (site) {
+      var tag = make('p', 'll-footer-tagline', 'Profesionální vlasová kosmetika ověřená ve vlastním salonu v Opavě.');
+      tag.hidden = true;
+      site.appendChild(tag);
     }
-    var names = { 'Visa a Mastercard': ['Visa', 'Mastercard'], 'Balik do ruky': ['Balík do ruky'], 'Mobile Pay': ['MobilePay'], 'Bitcoin Pay': ['Bitcoin'] };
-    qsa('#footer .banner .pays').forEach(function (box) {
-      if (box.querySelector('.ll-footer-chips')) return;
-      var wrap = d.createElement('div');
-      wrap.className = 'll-footer-chips';
-      wrap.hidden = true;
-      Array.prototype.forEach.call(box.querySelectorAll('img'), function (img) {
-        var alt = (img.getAttribute('alt') || '').trim();
-        if (!alt) return;
-        (names[alt] || [alt]).forEach(function (t) {
-          var s = d.createElement('span');
-          s.className = 'll-footer-chip';
-          s.textContent = t;
-          wrap.appendChild(s);
-        });
-      });
-      if (wrap.children.length) box.appendChild(wrap);
+    var host = f.querySelector('.custom-footer');
+    var buy = [], info = [], privacy = null;
+    var link = function (href, text) { var a = make('a', '', text); a.href = href; return a; };
+    qsa('#footer .custom-footer__banner8 a').forEach(function (a) {
+      var href = a.getAttribute('href') || '';
+      var text = a.textContent.trim();
+      if (!text) return;
+      if (/ochrany-osobnich-udaju/.test(href)) { privacy = href; return; }
+      (/obchodni-podminky|vernostni-program|hodnoceni-obchodu|poukazy|doprava|reklamac/.test(href) ? buy : info).push(link(href, text));
     });
+    var gift = d.querySelector('.top-navigation-bar a[href*="/poukazy"]');
+    if (gift && !buy.some(function (a) { return /poukazy/.test(a.getAttribute('href')); })) buy.splice(Math.min(2, buy.length), 0, link(gift.getAttribute('href'), 'Dárkové poukazy'));
+    var contact = f.querySelector('.contact-box a.btn[href*="kontakt"]');
+    if (contact) info.push(link(contact.getAttribute('href'), 'Kontakt'));
+    if (host) {
+      [['buy', 'Nákup', buy], ['info', 'Informace', info]].forEach(function (c) {
+        if (!c[2].length) return;
+        var col = make('div', 'll-footer-col ll-footer-col--' + c[0]);
+        col.hidden = true;
+        col.appendChild(make('h4', '', c[1]));
+        var ul = make('ul');
+        c[2].forEach(function (a) { var li = make('li'); li.appendChild(a); ul.appendChild(li); });
+        col.appendChild(ul);
+        host.appendChild(col);
+      });
+    }
+    var social = f.querySelector('.custom-footer__banner9 .banner-wrapper');
+    if (social) {
+      var h = make('h4', 'll-footer-social-title', 'Sledujte nás');
+      h.hidden = true;
+      social.insertBefore(h, social.firstChild);
+    }
+    var bottom = f.querySelector('.footer-bottom');
+    if (bottom) {
+      var names = { 'Visa a Mastercard': ['Visa', 'Mastercard'], 'Balik do ruky': ['Balík do ruky'], 'Mobile Pay': ['MobilePay'], 'Bitcoin Pay': ['Bitcoin'] };
+      var bar = make('div', 'll-footer-paybar');
+      bar.hidden = true;
+      qsa('#footer .custom-footer__banner5 .pays img, #footer .custom-footer__banner7 .pays img').forEach(function (img) {
+        var alt = (img.getAttribute('alt') || '').trim();
+        if (alt) (names[alt] || [alt]).forEach(function (t) { bar.appendChild(make('span', 'll-footer-chip', t)); });
+      });
+      if (bar.children.length) bottom.insertBefore(bar, bottom.firstChild);
+      var copy = bottom.querySelector('.copyright');
+      if (copy && privacy) {
+        var pl = link(privacy, 'Ochrana osobních údajů');
+        pl.className = 'll-footer-privacy';
+        pl.hidden = true;
+        copy.insertBefore(pl, copy.querySelector('.cookies-settings'));
+      }
+    }
   }
   onReady(footerDS);
   onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
