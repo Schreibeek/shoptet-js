@@ -389,6 +389,30 @@
     new MutationObserver(sync).observe(form, { attributes: true, attributeFilter: ['class'] });
   }
   onReady(rateFormExpanded);
+  // Okno po přidání do košíku: Shoptet dává #colorbox třídu colorbox--order až po doběhnutí animace (asi 250 ms),
+  // takže při prvním otevření je chvíli vidět klasické okno uprostřed a až pak se změní na postranní panel. Obsah
+  // .advanced-order je v okně hned od otevření: třídu podle něj přidáme dřív, než se okno vykreslí (MutationObserver
+  // běží před překreslením). Šablona třídu po zavření nechává, takže jiná okna (galerie, Hlídat cenu) by vypadala jako
+  // panel: u jiného obsahu ji odebereme. Prázdné okno (při zavírání) nechává třídu beze změny.
+  function orderDrawerEarly() {
+    var watch = function (box) {
+      var sync = function () {
+        var loaded = box.querySelector('#cboxLoadedContent');
+        if (!loaded || !loaded.firstElementChild) return;
+        box.classList.toggle('colorbox--order', !!loaded.querySelector('.advanced-order'));
+      };
+      new MutationObserver(sync).observe(box, { childList: true, subtree: true });
+      sync();
+    };
+    var box = d.getElementById('colorbox');
+    if (box) { watch(box); return; }
+    var wait = new MutationObserver(function () {
+      var el = d.getElementById('colorbox');
+      if (el) { wait.disconnect(); watch(el); }
+    });
+    wait.observe(d.body, { childList: true });
+  }
+  onReady(orderDrawerEarly);
   onReady(function () { if (d.body.classList.contains('type-index') || location.pathname === '/') brands(); });
   onReady(function () {
     ratings();
