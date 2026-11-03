@@ -1085,9 +1085,10 @@ document.addEventListener("DOMContentLoaded", function() {
       el.classList.add('ll-float');
       var sh = headerShown();
       var upper = sh ? HEADER + GAP : GAP;
-      // Poloha, kdy je konec panelu 24 px nad spodním okrajem okna. Vejde-li se panel pod horní mez, smí se usadit kdekoli od 24 px výš
+      // Poloha, kdy je konec panelu 24 px nad spodním okrajem okna. Vejde-li se panel pod horní mez, stojí na ní a nehýbe se;
+      // jinak jede mezi touto polohou a horní mezí
       var bottom = window.innerHeight - el.offsetHeight - GAP;
-      var lower = bottom >= upper ? GAP : bottom;
+      var lower = bottom >= upper ? upper : bottom;
       // Nahoru nejvýš k horní mezi; když je panel níž (hlavička právě zajela), jen jede se stránkou
       var cap = Math.max(upper, Math.min(top, HEADER + GAP));
       // Dolů nejvýš k dolní mezi; když je panel po sbalení skupiny výš, nechá se a srovná se až posunem nahoru
