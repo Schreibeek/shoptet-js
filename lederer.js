@@ -1020,6 +1020,97 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  // Filtry v kategorii na počítači jako akordeon (DS Filters, verze 53): skupina se otevře a zavře kliknutím na nadpis (třída is-active jako v šabloně).
+  // Skupiny s vybranou volbou otevírá šablona (initFilterActiveStates). Co zákazník otevřel nebo zavřel, se vrátí i po filtrování:
+  // Shoptet skupiny překreslí a pošle ShoptetDOMPageContentLoaded, stav se drží podle klíče skupiny.
+  function filtersAccordion() {
+    if (!d.body.classList.contains('type-category') || !window.matchMedia) return;
+    var mq = window.matchMedia('(min-width: 992px)');
+    var HEAD = 'aside.sidebar-left #filters .slider-wrapper > h4, aside.sidebar-left #filters .filter-section > h4';
+    var state = {};
+    function key(g) {
+      if (g.classList.contains('slider-wrapper')) return 'cena';
+      var m = /filter-section-(boolean|manufacturer|parametric-id-\d+)/.exec(g.className);
+      return m ? m[1] : null;
+    }
+    function sync() {
+      // Třída ll-acc zapne v CSS sbalování: bez skriptu zůstanou skupiny rozbalené
+      root.classList.toggle('ll-acc', mq.matches);
+      if (!mq.matches) return;
+      qsa(HEAD).forEach(function (h) {
+        var g = h.parentElement, k = key(g);
+        if (!k) return;
+        if (Object.prototype.hasOwnProperty.call(state, k)) g.classList.toggle('is-active', state[k]);
+        h.setAttribute('role', 'button');
+        h.setAttribute('tabindex', '0');
+        h.setAttribute('aria-expanded', g.classList.contains('is-active') ? 'true' : 'false');
+      });
+    }
+    function toggle(h) {
+      var g = h.parentElement, k = key(g);
+      if (!k) return;
+      var open = !g.classList.contains('is-active');
+      g.classList.toggle('is-active', open);
+      state[k] = open;
+      h.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    function target(e) { return mq.matches && e.target.closest ? e.target.closest(HEAD) : null; }
+    d.addEventListener('click', function (e) { var h = target(e); if (h) toggle(h); });
+    d.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var h = target(e);
+      if (h) { e.preventDefault(); toggle(h); }
+    });
+    d.addEventListener('ShoptetDOMPageContentLoaded', function () { setTimeout(sync, 0); });
+    if (mq.addEventListener) mq.addEventListener('change', sync);
+    sync();
+  }
+
+  // Levý panel v kategorii lepicí bez posuvníku uvnitř (DS Filters, verze 53). Vejde-li se do okna, drží se 24 px pod horním okrajem
+  // (pod zobrazenou hlavičkou šablony 24 px pod ní). Vyšší jede se stránkou a zastaví se, když při posunu dolů dojede jeho konec
+  // (24 px nad spodním okrajem okna) a při posunu nahoru jeho začátek. CSS dělá position: sticky, tady se počítá jen top.
+  function floatingSidebar() {
+    if (!d.body.classList.contains('type-category') || !window.matchMedia) return;
+    var el = d.querySelector('aside.sidebar-left .sidebar-inner');
+    if (!el) return;
+    var mq = window.matchMedia('(min-width: 992px)');
+    var GAP = 24, HEADER = 117;
+    var top = GAP, lastY = window.pageYOffset, shown = false, raf = 0, ease = 0;
+    function headerShown() { var c = d.body.classList; return c.contains('is-header-hidden') && c.contains('is-header-scrolling'); }
+    function update() {
+      raf = 0;
+      var y = window.pageYOffset, dy = y - lastY;
+      lastY = y;
+      if (!mq.matches) { el.classList.remove('ll-float'); return; }
+      el.classList.add('ll-float');
+      var sh = headerShown();
+      var upper = sh ? HEADER + GAP : GAP;
+      // Poloha, kdy je konec panelu 24 px nad spodním okrajem okna. Vejde-li se panel pod horní mez, smí se usadit kdekoli od 24 px výš
+      var bottom = window.innerHeight - el.offsetHeight - GAP;
+      var lower = bottom >= upper ? GAP : bottom;
+      // Nahoru nejvýš k horní mezi; když je panel níž (hlavička právě zajela), jen jede se stránkou
+      var cap = Math.max(upper, Math.min(top, HEADER + GAP));
+      // Dolů nejvýš k dolní mezi; když je panel po sbalení skupiny výš, nechá se a srovná se až posunem nahoru
+      var floor = Math.min(lower, top);
+      var t = Math.max(floor, Math.min(cap, top - dy));
+      // Hlavička se právě ukázala a panel stojí nahoře: sjede pod ni spolu s ní
+      if (sh && !shown && top >= GAP - 1 && t < upper) {
+        t = upper;
+        el.classList.add('ll-float--ease');
+        clearTimeout(ease);
+        ease = setTimeout(function () { el.classList.remove('ll-float--ease'); }, 460);
+      }
+      shown = sh;
+      top = t;
+      el.style.setProperty('--ll-float-top', Math.round(t) + 'px');
+    }
+    function req() { if (!raf) raf = requestAnimationFrame(update); }
+    window.addEventListener('scroll', req, { passive: true });
+    window.addEventListener('resize', req);
+    if (window.MutationObserver) new MutationObserver(req).observe(d.body, { attributes: true, attributeFilter: ['class'] });
+    update();
+  }
+
   // Košík (DS PageCart): kontakt z hlavičky košíku („Potřebujete pomoci?“) jako pomoc dole v panelu se souhrnem.
   // Košík se po změně množství překresluje, proto se pomoc vkládá znovu.
   function cartHelp() {
@@ -1096,6 +1187,8 @@ document.addEventListener("DOMContentLoaded", function() {
   onReady(cartHelp);
   onReady(zdarma);
   onReady(filtersSheet);
+  onReady(filtersAccordion);
+  onReady(floatingSidebar);
   onReady(homepage);
   onReady(benefits);
   onReady(loyalty);
