@@ -961,6 +961,29 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  // Upozornění na delší doručení v nákupním panelu (DS DeliveryNotice, varianta A): celý řádek na konci .p-info-grid,
+  // pod cenou a dostupností, nad věrnostní slevou. Dočasně od 4. 11. 2026 pro GelaVis Dual Hyaluronate 30, 90 a 360
+  // (výchozí kategorie /gelavis/, body.in-gelavis): dodavatel pro český trh má potíže s dodávkami.
+  // Po vyřešení dodávek smazat tuto funkci, její volání a pravidla .ll-notice v lederer.css.
+  var NOTICE = {
+    show: function () { return d.body.classList.contains('type-detail') && d.body.classList.contains('in-gelavis'); },
+    title: 'Doručení se může o několik dní opozdit',
+    text: 'Dodavatel GelaVis pro český trh má potíže s dodávkami. Týká se to celého českého trhu, ne jen našeho obchodu. Objednat můžete jako obvykle.'
+  };
+  function deliveryNotice() {
+    if (!d.body || !NOTICE.show()) return;
+    var grid = d.querySelector('.p-info-grid');
+    if (!grid || grid.querySelector('.ll-notice')) return;
+    var n = d.createElement('div');
+    n.className = 'll-notice ll-notice--soft';
+    n.setAttribute('role', 'note');
+    n.innerHTML = '<span class="ll-notice__icon">' + icon('<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>') +
+      '</span><div class="ll-notice__body"><strong class="ll-notice__title"></strong><span class="ll-notice__text"></span></div>';
+    n.querySelector('.ll-notice__title').textContent = NOTICE.title;
+    n.querySelector('.ll-notice__text').textContent = NOTICE.text;
+    grid.appendChild(n);
+  }
+
   // Hodnocení jako v DS (ll-rating__value): hodnota s desetinnou čárkou do data-ll-value, CSS ji vypíše za hvězdy.
   // Karty ji mají v data-micro-rating-value, detail jen ve skrytém textu ("Průměrné hodnocení produktu je 4,6 z 5 hvězdiček").
   function ratings() {
@@ -1193,6 +1216,8 @@ document.addEventListener("DOMContentLoaded", function() {
   onReady(homepage);
   onReady(benefits);
   onReady(loyalty);
+  deliveryNotice(); // hned, ať panel neposkočí (skript je v patičce, panel už je v HTML)
+  onReady(deliveryNotice);
   // Prázdné odstavce z editoru (jen &nbsp;) na textových stránkách a v článcích dělají díry: označit a schovat (třída ll-blank v CSS).
   function blankParas() {
     qsa('body.type-page .pageArticleDetail [itemprop="about"] p, body.type-post .news-item-detail .text p').forEach(function (p) {
