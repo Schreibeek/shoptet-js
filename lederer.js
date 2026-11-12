@@ -153,6 +153,67 @@ document.addEventListener('DOMContentLoaded', function () {
 // i u přihlášeného zákazníka s věrnostní slevou a u zvolené varianty.
 var LedererCoupon = (function() {
 
+    // ===== Kampaně s kódem (DS v2: ll-code-note, ll-card__code, ll-promo--campaign) =====
+    // Produkt v kampani má v adminu příznak s platností od-do; text příznaku je jen název
+    // kampaně (štítek), procenta a kód jsou tady. Rozšířit akci = přidat příznak dalším
+    // produktům. Kupón v adminu omezuje šablona (Black Friday 2026: šablona Autentic Beauty).
+    // brand slouží jen náhledu ?nahled-akce=1: před začátkem Shoptet příznak nevykreslí,
+    // tak ho náhled doplní produktům té značky.
+    var CAMPAIGNS = [
+        {
+            flag: "flag-black10",
+            label: "Black Friday",
+            percent: 10,
+            code: "BLACKFRIDAY10",
+            from: "2026-11-15T00:00:00+01:00",
+            to: "2026-12-01T00:00:00+01:00",
+            brand: "AUTHENTIC BEAUTY CONCEPT",
+            bar: {
+                html: "-10&nbsp;% na celou značku <strong>Authentic Beauty Concept</strong> s&nbsp;kódem",
+                shortHtml: "-10&nbsp;% na <strong>Authentic Beauty Concept</strong> s&nbsp;kódem",
+                href: "/znacka/authentic-beauty-concept/",
+                link: "Nakupovat"
+            }
+        }
+    ];
+    // Starší příznaky s textem „-9% s kódem DEVITKA“ (procenta a kód se čtou z textu)
+    var LEGACY_FLAGS = [".flag-kupon-sleva", ".flag-black20"];
+
+    // ?nahled-akce=1 zapne náhled kampaní pro tenhle prohlížeč (do zavření okna),
+    // ?nahled-akce=0 ho vypne. Zákazníci bez parametru nic nevidí.
+    var previewOn = (function() {
+        var on = false;
+        try {
+            var m = location.search.match(/[?&]nahled-akce=([01])/);
+            if (m) sessionStorage.setItem("llCampaignPreview", m[1]);
+            on = sessionStorage.getItem("llCampaignPreview") === "1";
+        } catch (e) {}
+        return on;
+    })();
+
+    function started(c) { return Date.now() >= Date.parse(c.from); }
+    function running(c) { var now = Date.now(); return now >= Date.parse(c.from) && now < Date.parse(c.to); }
+    function active(c) { return running(c) || (previewOn && Date.now() < Date.parse(c.to)); }
+    function activeCampaigns() { return CAMPAIGNS.filter(active); }
+
+    function flagSelectors() {
+        return CAMPAIGNS.map(function(c) { return "." + c.flag; }).concat(LEGACY_FLAGS).join(", ");
+    }
+
+    // Příznak → { percent, code, label, campaign }
+    function campaignFor(flagEl) {
+        if (!flagEl) return null;
+        for (var i = 0; i < CAMPAIGNS.length; i++) {
+            var c = CAMPAIGNS[i];
+            if (flagEl.classList.contains(c.flag)) {
+                return active(c) ? { percent: c.percent, code: c.code, label: c.label, campaign: c } : null;
+            }
+        }
+        var legacy = parseFlag(flagEl);
+        if (legacy) legacy.label = "Akce";
+        return legacy;
+    }
+
     function separators() {
         var cfg = (window.shoptet && shoptet.config) || {};
         var dec = cfg.decSeparator;
@@ -286,11 +347,63 @@ var LedererCoupon = (function() {
         round: round,
         format: format,
         parseFlag: parseFlag,
-        priceAfterCoupon: priceAfterCoupon
+        priceAfterCoupon: priceAfterCoupon,
+        campaigns: CAMPAIGNS,
+        activeCampaigns: activeCampaigns,
+        campaignFor: campaignFor,
+        flagSelectors: flagSelectors,
+        started: started,
+        preview: function() { return previewOn; }
     };
 })();
 
-// Kupónová akce z flagu (flag-kupon-sleva, flag-black10/20)
+// Náhled kampaně (?nahled-akce=1): před začátkem Shoptet příznak nevykreslí, tak ho
+// doplníme produktům značky kampaně na detailu i v kartách. Jen pro tenhle prohlížeč.
+document.addEventListener("DOMContentLoaded", function() {
+    if (!LedererCoupon.preview()) return;
+    LedererCoupon.activeCampaigns().forEach(function(c) {
+        if (LedererCoupon.started(c) || !c.brand) return;
+        var brand = c.brand.toUpperCase();
+        var make = function() {
+            var s = document.createElement("span");
+            s.className = "flag " + c.flag + " ll-preview-flag";
+            s.textContent = c.label;
+            return s;
+        };
+        try {
+            var p = getShoptetDataLayer("product");
+            if (p && String(p.manufacturer || "").toUpperCase() === brand && !document.querySelector("#main-slider ." + c.flag + ", .p-detail-inner ." + c.flag)) {
+                var box = document.querySelector("#main-slider .flags, .p-image-wrapper .flags, .p-image .flags");
+                if (box) box.appendChild(make());
+            }
+        } catch (e) {}
+        var addToCards = function() {
+            var cards = document.querySelectorAll(".p");
+            for (var i = 0; i < cards.length; i++) {
+                var card = cards[i];
+                if (card.querySelector("." + c.flag)) continue;
+                var name = card.querySelector(".name");
+                if (!name || name.textContent.toUpperCase().indexOf(brand) < 0) continue;
+                var flags = card.querySelector(".flags");
+                if (!flags) {
+                    var img = card.querySelector(".image");
+                    if (!img) continue;
+                    flags = document.createElement("div");
+                    flags.className = "flags flags-default";
+                    img.appendChild(flags);
+                }
+                flags.insertBefore(make(), flags.firstChild);
+            }
+        };
+        addToCards();
+        ["ShoptetDOMPageContentLoaded", "ShoptetDOMPageMoreProductsLoaded"].forEach(function(evt) {
+            document.addEventListener(evt, function() { setTimeout(addToCards, 50); });
+        });
+    });
+});
+
+// Kupónová akce z flagu (kampaně v LedererCoupon + starší flag-kupon-sleva, flag-black20)
+// 2026-11 (DS v2): akce s kódem v nákupním panelu jako ll-code-note (BuyboxPrice).
 // FIX 2026-07-22: flag nemusí být uvnitř .p-image — u produktů s gallery-new/splide
 // ho Shoptet vykresluje v .p-image-wrapper (flags-inline). Hledáme proto v celém
 // dokumentu a vylučujeme jen flagy z produktových karet (související produkty, výpisy).
@@ -305,7 +418,7 @@ document.addEventListener("DOMContentLoaded", function() {
         rounding: "auto",
         // vypsat i přeškrtnutou původní cenu
         showOriginal: true,
-        label: "Cena s kódem:",
+        label: "Cena s kódem",
         // kliknutím na štítek uplatnit kupón (Shoptet AJAX /action/Cart/addDiscountCoupon/)
         clickToApply: true,
         // Shoptet kupón k prázdnému košíku nepřijme. "copy" = jen zkopírovat kód do
@@ -313,55 +426,51 @@ document.addEventListener("DOMContentLoaded", function() {
         emptyCartAction: "copy"
     };
 
-    var possibleFlags = [
-        { selector: ".flag-kupon-sleva", className: "custom-discount-info" },
-        { selector: ".flag-black10", className: "custom-discount-black" },
-        { selector: ".flag-black20", className: "custom-discount-black" }
-    ];
+    if (document.querySelector(".ll-code-note")) return;
 
-    if (document.querySelector(".coupon-banner")) return;
-
-    var couponElement = null;
-    var classToApply = "custom-discount-info";
-    for (var i = 0; i < possibleFlags.length; i++) {
-        var els = document.querySelectorAll(possibleFlags[i].selector);
-        for (var j = 0; j < els.length; j++) {
-            if (!els[j].closest(".product") && !els[j].closest("#products")) {
-                couponElement = els[j];
-                classToApply = possibleFlags[i].className;
-                break;
-            }
-        }
-        if (couponElement) break;
+    var info = null;
+    var flagEls = document.querySelectorAll(LedererCoupon.flagSelectors());
+    for (var i = 0; i < flagEls.length && !info; i++) {
+        if (flagEls[i].closest(".product") || flagEls[i].closest("#products") || flagEls[i].closest(".p")) continue;
+        info = LedererCoupon.campaignFor(flagEls[i]);
     }
-    if (!couponElement) return;
+    if (!info) return;
 
-    var parts = couponElement.textContent.trim().match(/-?(\d+)%\s+s kódem\s+(\S+)/i);
-    if (!parts || parts.length !== 3) return;
-
-    var discount = parseFloat(parts[1]);
-    var code = parts[2];
+    var discount = info.percent;
+    var code = info.code;
+    var campaign = info.campaign || null;
 
     var anchor = document.querySelector(".p-info-grid") || document.querySelector(".p-final-price-wrapper");
     if (!anchor) return;
 
-    // --- sestavení štítku (stejné místo i text jako dosud, jen s cenovou částí navíc)
+    // --- sestavení podle DS (BuyboxPrice: ll-code-note) ---------------------------
+    // Obal drží boky nákupního panelu (díl mezi .p-info-grid a věrnostním boxem).
+    var wrap = document.createElement("div");
+    wrap.className = "ll-code-note-wrap";
     var banner = document.createElement("div");
-    banner.className = classToApply + " coupon-banner";
+    banner.className = "ll-code-note";
 
-    var main = document.createElement("span");
-    main.className = "cdi-main";
-    main.appendChild(strong("🔥 AKCE:"));
-    main.appendChild(document.createTextNode(" -" + parts[1] + "% s kódem "));
-    main.appendChild(strong(code));
+    var main = span("ll-code-note__main", "");
+    main.appendChild(span("ll-badge ll-badge--campaign", info.label || "Akce"));
+    var txt = document.createElement("span");
+    txt.appendChild(document.createTextNode("-" + discount + "\u00a0% s\u00a0kódem "));
+    txt.appendChild(span("ll-code-note__code", code));
+    main.appendChild(txt);
     banner.appendChild(main);
 
-    var priceWrap = document.createElement("span");
-    priceWrap.className = "cdi-price";
+    var priceWrap = span("ll-code-note__price", "");
     priceWrap.style.display = "none";
+    priceWrap.appendChild(span("ll-code-note__label", CONFIG.label));
+    var priceNow = span("ll-code-note__now", "");
+    priceWrap.appendChild(priceNow);
     banner.appendChild(priceWrap);
 
-    anchor.parentNode.insertBefore(banner, anchor.nextSibling);
+    var hint = span("ll-code-note__hint", "");
+    hint.style.display = "none";
+    banner.appendChild(hint);
+
+    wrap.appendChild(banner);
+    anchor.parentNode.insertBefore(wrap, anchor.nextSibling);
 
     // POZOR: deklarace musi byt nad volanim init funkci — `var x = ...` se vykonava
     // az na svem radku a prepsalo by referenci nastavenou uvnitr enableApply().
@@ -384,7 +493,6 @@ document.addEventListener("DOMContentLoaded", function() {
         // cena = necháme štítek v původní podobě, ať nikdy nesvítí nesmysl
         if (numbers.length !== 1 || !(numbers[0] > 0) || !(discount > 0) || discount >= 100) {
             priceWrap.style.display = "none";
-            priceWrap.textContent = "";
             return;
         }
 
@@ -392,21 +500,13 @@ document.addEventListener("DOMContentLoaded", function() {
         var discounted = round(base * (1 - discount / 100), sep);
         if (!(discounted > 0) || discounted >= base) {
             priceWrap.style.display = "none";
-            priceWrap.textContent = "";
             return;
         }
 
         var prefix = /^\s*od\b/i.test(raw) ? "od " : "";
 
-        priceWrap.textContent = "";
-        priceWrap.appendChild(span("cdi-price-label", CONFIG.label));
-        if (CONFIG.showOriginal) {
-            var old = document.createElement("s");
-            old.className = "cdi-price-old";
-            old.textContent = prefix + format(base, sep);
-            priceWrap.appendChild(old);
-        }
-        priceWrap.appendChild(strong(prefix + format(discounted, sep), "cdi-price-new"));
+        // Původní cenu neopakujeme, stojí v panelu přímo nad akcí (DS BuyboxPrice)
+        priceNow.textContent = prefix + format(discounted, sep);
         priceWrap.style.display = "";
     }
 
@@ -479,10 +579,11 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!window.shoptet || !shoptet.config || !shoptet.config.addDiscountCouponUrl) return;
         if (!shoptet.cart || typeof shoptet.cart.ajaxSubmitForm !== "function") return;
 
-        banner.classList.add("coupon-banner--clickable");
+        banner.classList.add("is-clickable");
         banner.setAttribute("role", "button");
         banner.setAttribute("tabindex", "0");
-        banner.setAttribute("title", "Uplatnit slevový kód " + code);
+        banner.setAttribute("aria-label", "Uplatnit slevový kód " + code + " v košíku");
+        hint.style.display = "";
 
         banner.addEventListener("click", activate);
         banner.addEventListener("keydown", function(e) {
@@ -499,6 +600,11 @@ document.addEventListener("DOMContentLoaded", function() {
     function activate(e) {
         if (e) e.preventDefault();
         if (busy || isApplied()) return;
+        // Náhled před začátkem kampaně: kupón ještě neplatí, Shoptet by ho odmítl
+        if (campaign && LedererCoupon.preview() && !LedererCoupon.started(campaign)) {
+            notify("Náhled akce: kód " + code + " začne platit " + new Date(campaign.from).toLocaleDateString("cs-CZ") + ".", "info");
+            return;
+        }
         busy = true;
         setTimeout(function() { busy = false; }, 3000);
         if (cartIsEmpty()) {
@@ -589,9 +695,15 @@ document.addEventListener("DOMContentLoaded", function() {
         return false;
     }
 
-    // Zadny vlastni prvek uvnitr stitku — jen trida, kdyby se chtel stav nastylovat.
+    var ICON_TICKET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M9 9h.01"/><path d="m15 9-6 6"/><path d="M15 15h.01"/></svg>';
+    var ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
     function refreshApplied() {
-        banner.classList.toggle("is-applied", isApplied());
+        var applied = isApplied();
+        banner.classList.toggle("is-applied", applied);
+        hint.innerHTML = applied
+            ? ICON_CHECK + "Kód je uplatněný v košíku"
+            : ICON_TICKET + "Kliknutím kód uplatníte v košíku";
     }
 
     function copyCode() {
@@ -692,14 +804,14 @@ document.addEventListener("DOMContentLoaded", function() {
         backgroundAlpha: 0.1
     };
 
-    var FLAGS = ".flag-kupon-sleva, .flag-black10, .flag-black20";
+    var FLAGS = LedererCoupon.flagSelectors();
     var CLASS = "p-coupon-price";
 
     function decorate(card) {
         if (card.querySelector("." + CLASS)) return;
         var flag = card.querySelector(FLAGS);
         if (!flag) return;
-        var info = LedererCoupon.parseFlag(flag);
+        var info = LedererCoupon.campaignFor(flag);
         if (!info) return;
         var priceBox = card.querySelector(".prices .price-final") || card.querySelector(".price-final");
         if (!priceBox) return;
@@ -712,10 +824,13 @@ document.addEventListener("DOMContentLoaded", function() {
         var price = LedererCoupon.priceAfterCoupon(priceSource, info.percent, CONFIG.rounding);
         if (!price) return;
 
+        // DS ProductCard: ll-card__code „S kódem 674,10 Kč“ na gold-soft (barva z CSS)
         var chip = document.createElement("span");
-        chip.className = CLASS;
-        chip.textContent = CONFIG.label + " " + price.prefix + price.valueText;
-        paint(chip, flag);
+        chip.className = CLASS + " ll-card__code";
+        chip.appendChild(document.createTextNode("S kódem "));
+        var val = document.createElement("strong");
+        val.textContent = price.prefix + price.valueText;
+        chip.appendChild(val);
         priceBox.parentNode.insertBefore(chip, priceBox.nextSibling);
     }
 
@@ -793,6 +908,50 @@ document.addEventListener("DOMContentLoaded", function() {
         ? document.addEventListener("DOMContentLoaded", init)
         : init();
 })();
+
+// Kampaňová lišta nad hlavičkou (DS PromoBar: ll-promo--campaign). Na celém webu po dobu
+// kampaně (termín v LedererCoupon), v náhledu ?nahled-akce=1 i před začátkem. Zavřená se
+// do konce návštěvy nevrací. V objednávce (doprava a platba, údaje) se neukazuje.
+document.addEventListener("DOMContentLoaded", function() {
+    var list = LedererCoupon.activeCampaigns().filter(function(c) { return c.bar; });
+    if (!list.length || document.querySelector(".ll-promo")) return;
+    var c = list[0];
+    var key = "llPromoClosed:" + c.code;
+    try { if (sessionStorage.getItem(key)) return; } catch (e) {}
+    var b = document.body;
+    if (b.classList.contains("ordering-process") || b.classList.contains("in-krok-1") || b.classList.contains("in-krok-2")) return;
+    var header = document.getElementById("header");
+    if (!header || !header.parentNode) return;
+
+    var X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+    var codeHtml = ' <span class="ll-promo__code">' + c.code + '</span>';
+    var bar = document.createElement("div");
+    bar.className = "ll-promo ll-promo--campaign";
+    bar.setAttribute("role", "region");
+    bar.setAttribute("aria-label", "Aktuální akce");
+    bar.innerHTML =
+        '<span class="ll-badge ll-badge--campaign">' + c.label + '</span>' +
+        '<span class="ll-promo__text"><span class="ll-promo__long">' + c.bar.html + codeHtml + '</span>' +
+        '<span class="ll-promo__short">' + (c.bar.shortHtml || c.bar.html) + codeHtml + '</span></span>' +
+        (c.bar.href ? '<a class="ll-promo__link" href="' + c.bar.href + '">' + (c.bar.link || "Nakupovat") + '</a>' : '') +
+        '<button class="ll-promo__close" type="button" aria-label="Zavřít">' + X + '</button>';
+    header.parentNode.insertBefore(bar, header);
+    b.classList.add("ll-has-promo");
+
+    bar.querySelector(".ll-promo__close").addEventListener("click", function(e) {
+        e.stopPropagation();
+        try { sessionStorage.setItem(key, "1"); } catch (err) {}
+        bar.parentNode.removeChild(bar);
+        b.classList.remove("ll-has-promo");
+    });
+    // Na mobilu je odkaz schovaný, vede celá lišta
+    if (c.bar.href) {
+        bar.addEventListener("click", function(e) {
+            if (e.target.closest(".ll-promo__close") || e.target.closest("a")) return;
+            if (window.matchMedia && window.matchMedia("(max-width: 767px)").matches) location.href = c.bar.href;
+        });
+    }
+});
 
 // Doprava 49 Kč / ZDARMA na detailu produktu (ZDARMA od 1999 Kč včetně)
 // FIX 2026-07-21: cena se čte primárně ze Shoptet data layeru — u přihlášených
