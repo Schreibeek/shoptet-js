@@ -476,6 +476,8 @@ document.addEventListener("DOMContentLoaded", function() {
     // az na svem radku a prepsalo by referenci nastavenou uvnitr enableApply().
     var busy = false;
     var pending = null;
+    var ICON_TICKET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M9 9h.01"/><path d="m15 9-6 6"/><path d="M15 15h.01"/></svg>';
+    var ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
 
     updatePrice();
     watchPrice();
@@ -695,8 +697,6 @@ document.addEventListener("DOMContentLoaded", function() {
         return false;
     }
 
-    var ICON_TICKET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M9 9h.01"/><path d="m15 9-6 6"/><path d="M15 15h.01"/></svg>';
-    var ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
 
     function refreshApplied() {
         var applied = isApplied();
@@ -919,8 +919,10 @@ document.addEventListener("DOMContentLoaded", function() {
     var key = "llPromoClosed:" + c.code;
     try { if (sessionStorage.getItem(key)) return; } catch (e) {}
     var b = document.body;
-    if (b.classList.contains("ordering-process") || b.classList.contains("in-krok-1") || b.classList.contains("in-krok-2")) return;
-    var header = document.getElementById("header");
+    // V košíku ano (tam se kód zadává), v dalších krocích objednávky ne
+    if (b.classList.contains("ordering-process") && !b.classList.contains("in-kosik")) return;
+    // Úplně nahoru: nad horní informační lištu (.top-navigation-bar je před #header)
+    var header = document.querySelector(".overall-wrapper > .top-navigation-bar") || document.getElementById("header");
     if (!header || !header.parentNode) return;
 
     var X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
@@ -937,12 +939,17 @@ document.addEventListener("DOMContentLoaded", function() {
         '<button class="ll-promo__close" type="button" aria-label="Zavřít">' + X + '</button>';
     header.parentNode.insertBefore(bar, header);
     b.classList.add("ll-has-promo");
+    // Výška lišty pro okna Přihlášení a košíku (šablona je staví pevně od vrchu stránky)
+    var setH = function() { document.documentElement.style.setProperty("--ll-promo-h", (bar.parentNode ? bar.offsetHeight : 0) + "px"); };
+    setH();
+    window.addEventListener("resize", setH);
 
     bar.querySelector(".ll-promo__close").addEventListener("click", function(e) {
         e.stopPropagation();
         try { sessionStorage.setItem(key, "1"); } catch (err) {}
         bar.parentNode.removeChild(bar);
         b.classList.remove("ll-has-promo");
+        setH();
     });
     // Na mobilu je odkaz schovaný, vede celá lišta
     if (c.bar.href) {
