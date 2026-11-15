@@ -171,7 +171,7 @@ var LedererCoupon = (function() {
             bar: {
                 html: "-10&nbsp;% na celou značku <strong>Authentic Beauty Concept</strong> s&nbsp;kódem",
                 shortHtml: "-10&nbsp;% na <strong>Authentic Beauty Concept</strong> s&nbsp;kódem",
-                href: "/znacka/authentic-beauty-concept/",
+                href: "/akcni-nabidka/",
                 link: "Nakupovat"
             }
         }
