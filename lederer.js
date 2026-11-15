@@ -173,6 +173,12 @@ var LedererCoupon = (function() {
                 shortHtml: "-10&nbsp;% na <strong>Authentic Beauty Concept</strong> s&nbsp;kódem",
                 href: "/akcni-nabidka/",
                 link: "Nakupovat"
+            },
+            // Záhlaví stránky akce (DS CampaignHead A): místo titulku kategorie, jen po dobu kampaně
+            page: {
+                path: "/akcni-nabidka/",
+                title: "Black Friday: -10&nbsp;% na Authentic Beauty Concept",
+                perex: "Šampony, masky, styling i vánoční sady Authentic Beauty Concept teď o&nbsp;10&nbsp;% levněji. Stačí v&nbsp;košíku zadat kód, akce platí do pondělí 30.&nbsp;11."
             }
         }
     ];
@@ -958,6 +964,54 @@ document.addEventListener("DOMContentLoaded", function() {
             if (window.matchMedia && window.matchMedia("(max-width: 767px)").matches) location.href = c.bar.href;
         });
     }
+});
+
+// Záhlaví stránky akce (DS CampaignHead, varianta A): titulek s akcí, věta a lístek s kódem.
+// Jen po dobu kampaně (termín v LedererCoupon) a jen na její stránce (c.page.path, i další strany výpisu);
+// titulek a popis kategorie v administraci zůstávají, po konci akce se stránka vrátí sama.
+document.addEventListener("DOMContentLoaded", function() {
+    var path = location.pathname;
+    var c = LedererCoupon.activeCampaigns().filter(function(x) { return x.page && path.indexOf(x.page.path) === 0; })[0];
+    if (!c) return;
+    var h1 = document.querySelector("h1.category-title");
+    if (!h1 || document.querySelector(".ll-cat-head__code")) return;
+    h1.innerHTML = c.page.title;
+    var perex = document.createElement("p");
+    perex.className = "ll-cat-head__perex";
+    perex.innerHTML = c.page.perex;
+    var row = document.createElement("div");
+    row.className = "ll-cat-head__code";
+    row.innerHTML =
+        '<button class="ll-ticket" type="button" aria-label="Zkopírovat kód ' + c.code + '">' +
+        '<span class="ll-ticket__label">Kód</span><span class="ll-ticket__sep" aria-hidden="true"></span>' +
+        '<span class="ll-ticket__code">' + c.code + '</span></button>' +
+        '<span class="ll-cat-head__hint">Kliknutím kód zkopírujete</span>';
+    h1.parentNode.insertBefore(perex, h1.nextSibling);
+    h1.parentNode.insertBefore(row, perex.nextSibling);
+    var hint = row.querySelector(".ll-cat-head__hint");
+    function done(ok) {
+        hint.textContent = ok ? "Zkopírováno, vložte ho v košíku do pole Slevový kupón" : "Kód zadejte v košíku do pole Slevový kupón";
+        if (typeof window.showMessage === "function") {
+            try { window.showMessage(ok ? "Kód " + c.code + " je zkopírovaný. Vložte ho v košíku do pole Slevový kupón." : "Slevový kód " + c.code + " zadejte v košíku do pole Slevový kupón.", ok ? "success" : "info"); } catch (e) {}
+        }
+    }
+    function legacy() {
+        try {
+            var ta = document.createElement("textarea");
+            ta.value = c.code; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.top = "-1000px";
+            document.body.appendChild(ta); ta.select();
+            var ok = document.execCommand("copy");
+            document.body.removeChild(ta);
+            return ok;
+        } catch (e) { return false; }
+    }
+    row.querySelector(".ll-ticket").addEventListener("click", function() {
+        if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+            navigator.clipboard.writeText(c.code).then(function() { done(true); }, function() { done(legacy()); });
+        } else {
+            done(legacy());
+        }
+    });
 });
 
 // Doprava 49 Kč / ZDARMA na detailu produktu (ZDARMA od 1999 Kč včetně)
