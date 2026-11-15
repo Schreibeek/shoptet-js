@@ -1374,7 +1374,37 @@ document.addEventListener("DOMContentLoaded", function() {
     if (window.MutationObserver) new MutationObserver(run).observe(d.body, { childList: true, subtree: true });
   }
 
+  // Použitý kupón v souhrnu košíku: „Slevový kupon č. KÓD - Sleva 10%“ se nevešel na řádek s křížkem.
+  // Zkrátit na „Kupón KÓD“ a slevu dát vpravo jako „-10 %“ (DS CartCoupon); původní text zůstane v title.
+  function appliedCoupon() {
+    if (!d.body.classList.contains('ordering-process')) return;
+    function run() {
+      qsa('.cart-summary .applied-coupon > strong').forEach(function (s) {
+        if (s.getAttribute('data-ll-coupon')) return;
+        var box = s.parentNode, inp = box.querySelector('input[name="internalCode"]');
+        var txt = s.textContent.replace(/\s+/g, ' ').trim();
+        var code = inp && inp.value ? inp.value : (txt.match(/č\.\s*(\S+)/) || [])[1];
+        if (!code) return;
+        var m = txt.match(/Sleva\s*([\d\s.,]+?)\s*(%|Kč)/i);
+        s.setAttribute('data-ll-coupon', '1');
+        s.title = txt;
+        s.textContent = '';
+        var l = d.createElement('span'); l.className = 'll-coupon__label'; l.textContent = 'Kupón ';
+        var c = d.createElement('span'); c.className = 'll-coupon__code'; c.textContent = code;
+        s.appendChild(l); s.appendChild(c);
+        if (m) {
+          var v = d.createElement('span'); v.className = 'll-coupon__value';
+          v.textContent = '-' + m[1].trim() + ' ' + m[2];
+          box.insertBefore(v, s.nextSibling);
+        }
+      });
+    }
+    run();
+    if (window.MutationObserver) new MutationObserver(run).observe(d.body, { childList: true, subtree: true });
+  }
+
   onReady(cartHelp);
+  onReady(appliedCoupon);
   onReady(zdarma);
   onReady(filtersSheet);
   onReady(filtersAccordion);
